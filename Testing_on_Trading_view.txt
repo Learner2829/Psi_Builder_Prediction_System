@@ -1,0 +1,49 @@
+//@version=6
+indicator("Supertrend + MACD Trend Agreement", overlay=true)
+
+//--------------------
+// Supertrend Inputs
+//--------------------
+atrPeriod = input.int(10, "ATR Length", minval=1)
+factor    = input.float(3.0, "Factor", minval=0.01, step=0.01)
+
+// Supertrend Calculation
+[supertrend, direction] = ta.supertrend(factor, atrPeriod)
+
+// Trend direction flags
+isUpTrend   = direction < 0   // Supertrend's internal direction: <0 = Up
+isDownTrend = direction > 0   // >0 = Down
+
+//--------------------
+// MACD Inputs
+//--------------------
+fast_length   = input.int(12, "MACD Fast Length")
+slow_length   = input.int(26, "MACD Slow Length")
+signal_length = input.int(9,  "MACD Signal Length")
+src           = input.source(close, "MACD Source")
+
+// MACD Calculation
+fast_ma    = ta.ema(src, fast_length)
+slow_ma    = ta.ema(src, slow_length)
+macdLine   = fast_ma - slow_ma
+signalLine = ta.ema(macdLine, signal_length)
+
+// MACD crossover detection
+macdBull = ta.crossover(macdLine, signalLine)
+macdBear = ta.crossunder(macdLine, signalLine)
+
+//--------------------
+// Final Conditions
+//--------------------
+buySignal  = isUpTrend and macdBull
+sellSignal = isDownTrend and macdBear
+
+//--------------------
+// Plots
+//--------------------
+plotshape(buySignal,  title="BUY",  style=shape.labelup,   location=location.belowbar, color=color.green, text="BUY",  size=size.small, textcolor=color.white)
+plotshape(sellSignal, title="SELL", style=shape.labeldown, location=location.abovebar, color=color.red,   text="SELL", size=size.small, textcolor=color.white)
+
+// Alerts
+alertcondition(buySignal,  title="BUY Signal",  message="Supertrend Uptrend + MACD Bullish Crossover")
+alertcondition(sellSignal, title="SELL Signal", message="Supertrend Downtrend + MACD Bearish Crossover")
