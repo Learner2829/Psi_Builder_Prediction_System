@@ -1,0 +1,583 @@
+{% comment %} {% extends "base.html" %}
+
+{% block content %}
+
+<style>
+
+    /* --- DESKTOP FIRST STYLES --- */
+
+   
+
+    /* STATS GRID */
+
+    .stats-grid {
+
+        display: grid;
+
+        grid-template-columns: repeat(4, 1fr);
+
+        gap: 15px;
+
+        margin-bottom: 30px;
+
+    }
+
+    .stat-card {
+
+        background: #1e293b; padding: 20px; border-radius: 8px;
+
+        border: 1px solid #334155; text-align: center;
+
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+
+    }
+
+    .stat-label { font-size: 12px; color: #94a3b8; letter-spacing: 0.5px; text-transform: uppercase; }
+
+    .stat-val { font-size: 24px; font-weight: bold; margin-top: 5px; color: #fff; }
+
+
+
+    /* TABLES CONTAINER */
+
+    .table-container {
+
+        background: #1e293b; border-radius: 8px; overflow: hidden;
+
+        border: 1px solid #334155; margin-bottom: 30px;
+
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+   
+
+    th {
+
+        background: #020617; padding: 12px 15px; text-align: left;
+
+        color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+
+    }
+
+    td {
+
+        padding: 12px 15px; border-bottom: 1px solid #334155;
+
+        font-size: 13px; color: #e2e8f0;
+
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+
+
+    /* UTILITIES */
+
+    .green { color: #4ade80; font-weight: bold; }
+
+    .red { color: #f87171; font-weight: bold; }
+
+   
+
+    /* BADGES */
+
+    .badge { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+
+    .badge-buy { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+
+    .badge-sell { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+
+
+    /* BUTTONS */
+
+    .btn-action {
+
+        padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer;
+
+        color: white; font-size: 12px; font-weight: bold; margin-right: 5px; transition: 0.2s;
+
+    }
+
+    .btn-edit { background: #3b82f6; } .btn-edit:hover { background: #2563eb; }
+
+    .btn-exit { background: #dc2626; } .btn-exit:hover { background: #b91c1c; }
+
+
+
+    /* MODAL */
+
+    .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:100; justify-content:center; align-items:center; }
+
+    .modal { background: #1e293b; padding: 25px; border-radius: 12px; width: 90%; max-width: 350px; border: 1px solid #475569; }
+
+    .form-group { margin-bottom: 15px; }
+
+    .form-group label { display: block; margin-bottom: 5px; color: #94a3b8; font-size: 12px; }
+
+    .form-group input { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 4px; box-sizing: border-box; }
+
+
+
+    /* --- MOBILE RESPONSIVENESS (Media Queries) --- */
+
+    @media (max-width: 768px) {
+
+        .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+        .stat-card { padding: 15px; }
+
+        .stat-val { font-size: 18px; }
+
+       
+
+        /* TRANSFORM TABLES TO CARDS */
+
+        table, thead, tbody, th, td, tr { display: block; }
+
+        thead { display: none; }
+
+       
+
+        .table-container { background: transparent; border: none; }
+
+       
+
+        tr {
+
+            background: #1e293b; margin-bottom: 15px;
+
+            border: 1px solid #334155; border-radius: 8px;
+
+            padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+
+        }
+
+       
+
+        td {
+
+            padding: 8px 0; border-bottom: 1px solid #334155;
+
+            display: flex; justify-content: space-between; align-items: center;
+
+            text-align: right;
+
+        }
+
+       
+
+        td:last-child { border-bottom: none; padding-top: 15px; justify-content: flex-end; }
+
+
+
+        /* Add Labels via CSS */
+
+        td::before {
+
+            content: attr(data-label);
+
+            float: left;
+
+            font-weight: bold;
+
+            text-transform: uppercase;
+
+            font-size: 11px;
+
+            color: #94a3b8;
+
+        }
+
+       
+
+        .btn-action { padding: 8px 16px; font-size: 13px; }
+
+    }
+
+</style>
+
+
+
+<div class="stats-grid">
+
+    <div class="stat-card"><div class="stat-label">CASH</div><div id="cashBalance" class="stat-val">...</div></div>
+
+    <div class="stat-card"><div class="stat-label">INVESTED</div><div id="investedAmt" class="stat-val">...</div></div>
+
+    <div class="stat-card"><div class="stat-label">NET WORTH</div><div id="netWorth" class="stat-val" style="color:#facc15">...</div></div>
+
+    <div class="stat-card"><div class="stat-label">NET P&L</div><div id="totalPnl" class="stat-val">...</div></div>
+
+</div>
+
+
+
+<h3 style="color:#e2e8f0; margin-bottom:10px; font-size:16px;">⚡ Active Positions</h3>
+
+<div class="table-container">
+
+    <table>
+
+        <thead>
+
+            <tr>
+
+                <th>Time</th>
+
+                <th>Symbol</th>
+
+                <th>Side</th>
+
+                <th>Qty</th>
+
+                <th>Inv</th>
+
+                <th>Avg</th>
+
+                <th>LTP</th>
+
+                <th>SL</th>
+
+                <th>Target</th>
+
+                <th>Brokerage</th> <th>Net P&L</th>
+
+                <th>Action</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="openBody">
+
+            <tr><td colspan="12" style="text-align:center; padding:15px; color:#64748b;">Loading...</td></tr>
+
+        </tbody>
+
+    </table>
+
+</div>
+
+
+
+<h3 style="color:#e2e8f0; margin-bottom:10px; font-size:16px;">📜 Trade History</h3>
+
+<div class="table-container">
+
+    <table>
+
+        <thead>
+
+            <tr>
+
+                <th>Time</th>
+
+                <th>Symbol</th>
+
+                <th>Side</th>
+
+                <th>Qty</th>
+
+                <th>Inv</th>
+
+                <th>Entry</th>
+
+                <th>Exit</th>
+
+                <th>Brokerage</th> <th>Net P&L</th>
+
+                <th>Status</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody id="histBody">
+
+            <tr><td colspan="10" style="text-align:center; padding:15px; color:#64748b;">No History</td></tr>
+
+        </tbody>
+
+    </table>
+
+</div>
+
+
+
+<div id="modifyModal" class="modal-overlay">
+
+    <div class="modal">
+
+        <h3 style="margin-top:0; color:#fff;">Modify Order</h3>
+
+        <p id="modSymbol" style="color:#38bdf8; font-size:12px; margin-bottom:15px; font-weight:bold"></p>
+
+        <input type="hidden" id="modId">
+
+       
+
+        <div class="form-group"><label>New Stop Loss</label><input type="number" id="modSL" placeholder="0"></div>
+
+        <div class="form-group"><label>New Target</label><input type="number" id="modTarget" placeholder="0"></div>
+
+       
+
+        <div style="display:flex; justify-content:space-between; margin-top:20px;">
+
+            <button class="btn-action" style="background:#475569; padding:10px 20px; width:45%" onclick="closeMod()">Cancel</button>
+
+            <button class="btn-action" style="background:#22c55e; padding:10px 20px; width:45%" onclick="confirmModify()">Update</button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<script>
+
+    let subscribedTokens = new Set();
+
+    document.addEventListener('DOMContentLoaded', () => { updateDashboard(); setInterval(updateDashboard, 1000); });
+
+
+
+    async function updateDashboard() {
+
+        try {
+
+            const res = await fetch('/api/portfolio');
+
+            if (!res.ok) return;
+
+            const data = await res.json();
+
+            const m = data.metrics;
+
+
+
+            if (m) {
+
+                document.getElementById('cashBalance').innerText = "₹" + (m.cash||0).toLocaleString('en-IN');
+
+                document.getElementById('investedAmt').innerText = "₹" + (m.invested||0).toLocaleString('en-IN');
+
+                document.getElementById('netWorth').innerText = "₹" + (m.net_worth||0).toLocaleString('en-IN');
+
+                const pnl = m.pnl || 0;
+
+                const pnlEl = document.getElementById('totalPnl');
+
+                pnlEl.innerText = (pnl >= 0 ? "+" : "") + "₹" + pnl.toLocaleString('en-IN');
+
+                pnlEl.style.color = pnl >= 0 ? "#4ade80" : "#f87171";
+
+            }
+
+
+
+            if(data.tokens?.length > 0) {
+
+                const newT = data.tokens.filter(t => !subscribedTokens.has(t));
+
+                if(newT.length > 0) {
+
+                    fetch('/api/subscribe', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tokens:newT})});
+
+                    newT.forEach(t => subscribedTokens.add(t));
+
+                }
+
+            }
+
+
+
+            let openHTML = '', histHTML = '';
+
+            let hasOpen = false, hasHist = false;
+
+
+
+            if (data.positions) {
+
+                data.positions.forEach(p => {
+
+                    const netPnl = p.pnl || 0;
+
+                    const grossPnl = p.gross_pnl || 0;
+
+                    const charges = p.charges || 0;
+
+                   
+
+                    const isWin = netPnl >= 0;
+
+                    const color = isWin ? "green" : "red";
+
+                    const pnlStr = (isWin ? "+" : "") + netPnl.toFixed(2);
+
+                    const brokerageStr = "₹" + charges.toFixed(2);
+
+
+
+                    const timeStr = p.time ? p.time.split(' ')[1] : "--:--";
+
+                    const entry = parseFloat(p.entry_price || 0);
+
+                    const qty = parseInt(p.qty || 0);
+
+                    const investedVal = (entry * qty).toLocaleString('en-IN');
+
+                    const typeBadge = p.type === 'BUY' ? 'badge-buy' : 'badge-sell';
+
+
+
+                    if(p.status === 'OPEN') {
+
+                        hasOpen = true;
+
+                        openHTML += `<tr>
+
+                            <td data-label="Time">${timeStr}</td>
+
+                            <td data-label="Symbol" style="font-weight:bold; color:#fff">${p.symbol}</td>
+
+                            <td data-label="Side"><span class="badge ${typeBadge}">${p.type}</span></td>
+
+                            <td data-label="Qty">${qty}</td>
+
+                            <td data-label="Inv" style="color:#cbd5e1">₹${investedVal}</td>
+
+                            <td data-label="Avg">${entry}</td>
+
+                            <td data-label="LTP" style="font-weight:bold; color:#fff">${(p.current_price||0).toFixed(2)}</td>
+
+                            <td data-label="SL">${p.sl||'-'}</td>
+
+                            <td data-label="Target">${p.target||'-'}</td>
+
+                            <td data-label="Brokerage" style="color:#ef4444">${brokerageStr}</td>
+
+                            <td data-label="Net P&L" class="${color}" style="font-weight:bold">${pnlStr}</td>
+
+                            <td data-label="Action">
+
+                                <button class="btn-action btn-edit" onclick="openMod('${p.id}', '${p.symbol}', ${p.sl}, ${p.target})">Edit</button>
+
+                                <button class="btn-action btn-exit" onclick="exitTrade('${p.id}')">Exit</button>
+
+                            </td></tr>`;
+
+                    } else {
+
+                        hasHist = true;
+
+                        histHTML += `<tr style="opacity:0.6">
+
+                            <td data-label="Time">${timeStr}</td>
+
+                            <td data-label="Symbol" style="font-weight:bold; color:#cbd5e1">${p.symbol}</td>
+
+                            <td data-label="Side"><span class="badge ${typeBadge}">${p.type}</span></td>
+
+                            <td data-label="Qty">${qty}</td>
+
+                            <td data-label="Inv">₹${investedVal}</td>
+
+                            <td data-label="Entry">${entry}</td>
+
+                            <td data-label="Exit">${(p.exit_price||0).toFixed(2)}</td>
+
+                            <td data-label="Brokerage" style="color:#ef4444">${brokerageStr}</td>
+
+                            <td data-label="Net P&L" class="${color}" style="font-weight:bold">${pnlStr}</td>
+
+                            <td data-label="Status">${p.exit_reason || 'CLOSED'}</td></tr>`;
+
+                    }
+
+                });
+
+            }
+
+
+
+            document.getElementById('openBody').innerHTML = hasOpen ? openHTML : '<tr><td colspan="12" style="text-align:center; padding:15px; color:#64748b;">No Active Trades</td></tr>';
+
+            document.getElementById('histBody').innerHTML = hasHist ? histHTML : '<tr><td colspan="10" style="text-align:center; padding:15px; color:#64748b;">No History</td></tr>';
+
+
+
+        } catch(e) {}
+
+    }
+
+
+
+    // --- MODAL FUNCTIONS (Unchanged) ---
+
+    function openMod(id, symbol, sl, target) {
+
+        document.getElementById('modId').value = id;
+
+        document.getElementById('modSymbol').innerText = symbol;
+
+        document.getElementById('modSL').value = sl || "";
+
+        document.getElementById('modTarget').value = target || "";
+
+        document.getElementById('modifyModal').style.display = 'flex';
+
+    }
+
+
+
+    function closeMod() { document.getElementById('modifyModal').style.display = 'none'; }
+
+
+
+    async function confirmModify() {
+
+        const id = document.getElementById('modId').value;
+
+        const sl = document.getElementById('modSL').value;
+
+        const target = document.getElementById('modTarget').value;
+
+       
+
+        await fetch('/api/orders/modify', {
+
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+
+            body: JSON.stringify({id: id, sl: sl, target: target})
+
+        });
+
+        closeMod();
+
+        updateDashboard();
+
+    }
+
+
+
+    async function exitTrade(id) {
+
+        if(confirm("Square Off Position?")) {
+
+            await fetch('/api/orders/exit', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id: id})});
+
+            updateDashboard();
+
+        }
+
+    }
+
+</script>
+
+{% endblock %} {% endcomment %}

@@ -1,0 +1,8 @@
+Flask
+numpy
+psutil
+pyotp
+requests
+scipy
+smartapi-python
+dotenv

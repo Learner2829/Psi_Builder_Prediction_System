@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PaperTrade Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ================================================================
+           DESIGN TOKENS  —  all pages inherit these via [data-theme]
+           ================================================================ */
+        :root {
+            /* Dark palette */
+            --bg:    #07101f;
+            --srf:   #0d1a2e;
+            --card:  #122036;
+            --evl:   #192b44;
+            --inp:   #07101f;
+            --bdr:   #1e3050;
+            --bdr2:  #152640;
+
+            --t1: #dce9fa;
+            --t2: #7a90b0;
+            --t3: #3d526a;
+
+            --blue:   #4f8ef7;
+            --blueh:  #3472e0;
+            --gold:   #f5a623;
+            --green:  #34d399;
+            --red:    #f87171;
+            --sky:    #38bdf8;
+            --purple: #a78bfa;
+
+            --gbg: rgba(52,211,153,.13);
+            --rbg: rgba(248,113,113,.13);
+            --bbg: rgba(79,142,247,.1);
+            --pbg: rgba(167,139,250,.1);
+
+            --sh1: 0 2px 8px rgba(0,0,0,.45);
+            --sh2: 0 8px 32px rgba(0,0,0,.5);
+            --sh3: 0 24px 64px rgba(0,0,0,.6);
+
+            --r:  6px;
+            --rl: 12px;
+            --tx: all .2s ease;
+        }
+
+        [data-theme="light"] {
+            --bg:    #eef2f8;
+            --srf:   #ffffff;
+            --card:  #ffffff;
+            --evl:   #f4f7fc;
+            --inp:   #eaeff7;
+            --bdr:   #d0daea;
+            --bdr2:  #e4ecf5;
+
+            --t1: #0c1626;
+            --t2: #4a5568;
+            --t3: #8fa0b8;
+
+            --blue:   #2563eb;
+            --blueh:  #1d4ed8;
+            --gold:   #b45309;
+            --green:  #059669;
+            --red:    #dc2626;
+            --sky:    #0284c7;
+            --purple: #7c3aed;
+
+            --gbg: rgba(5,150,105,.09);
+            --rbg: rgba(220,38,38,.09);
+            --bbg: rgba(37,99,235,.09);
+            --pbg: rgba(124,58,237,.09);
+
+            --sh1: 0 2px 8px rgba(0,0,0,.06);
+            --sh2: 0 8px 32px rgba(0,0,0,.09);
+            --sh3: 0 24px 64px rgba(0,0,0,.13);
+        }
+
+        /* ================================================================
+           RESET & BASE
+           ================================================================ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--t1);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding-bottom: 32px;
+            transition: background .3s ease, color .3s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        a { text-decoration: none; color: inherit; }
+        button { cursor: pointer; font-family: inherit; }
+        input, select, textarea { font-family: inherit; }
+
+        /* ================================================================
+           NAVBAR
+           ================================================================ */
+        .navbar {
+            position: sticky; top: 0; z-index: 1000;
+            height: 56px;
+            background: var(--srf);
+            border-bottom: 1px solid var(--bdr);
+            box-shadow: var(--sh1);
+            display: flex; align-items: center;
+            padding: 0 20px; gap: 6px;
+            transition: background .3s ease, border-color .3s ease;
+        }
+
+        .logo {
+            font-size: 15px; font-weight: 800;
+            color: var(--blue); letter-spacing: -.5px;
+            display: flex; align-items: center; gap: 7px;
+            margin-right: 14px; white-space: nowrap; flex-shrink: 0;
+        }
+        .logo-pill {
+            font-size: 9px; font-weight: 700;
+            background: var(--gold); color: #000;
+            padding: 2px 6px; border-radius: 4px;
+            letter-spacing: .5px; line-height: 1;
+        }
+
+        .nav-links {
+            display: flex; align-items: center;
+            gap: 2px; flex: 1;
+        }
+        .nav-links a {
+            color: var(--t2); font-size: 13px; font-weight: 500;
+            padding: 6px 11px; border-radius: var(--r);
+            transition: var(--tx);
+            display: flex; align-items: center; gap: 5px; white-space: nowrap;
+        }
+        .nav-links a:hover  { color: var(--t1); background: var(--evl); }
+        .nav-links a.active { color: var(--blue); background: var(--bbg); font-weight: 600; }
+        .logout-btn { color: var(--red) !important; margin-left: auto; }
+        .logout-btn:hover { background: var(--rbg) !important; color: var(--red) !important; }
+
+        /* Theme toggle button */
+        .theme-toggle {
+            width: 34px; height: 34px; flex-shrink: 0;
+            border-radius: var(--r);
+            border: 1px solid var(--bdr);
+            background: var(--evl);
+            color: var(--t2); font-size: 15px;
+            display: flex; align-items: center; justify-content: center;
+            transition: var(--tx);
+        }
+        .theme-toggle:hover { background: var(--card); color: var(--t1); border-color: var(--blue); }
+
+        /* ================================================================
+           PAGE CONTAINER
+           ================================================================ */
+        .container { max-width: 1300px; margin: 0 auto; padding: 22px 16px; }
+
+        /* ================================================================
+           SHARED UTILITY CLASSES  (used across all pages)
+           ================================================================ */
+        .green { color: var(--green) !important; font-weight: 700; }
+        .red   { color: var(--red)   !important; font-weight: 700; }
+
+        /* Cards */
+        .card {
+            background: var(--srf);
+            border: 1px solid var(--bdr);
+            border-radius: var(--rl);
+            box-shadow: var(--sh1);
+            transition: background .3s, border-color .3s;
+        }
+
+        /* Stat cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4,1fr);
+            gap: 14px; margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--srf); border: 1px solid var(--bdr);
+            border-radius: var(--rl); padding: 18px 20px; text-align: center;
+            box-shadow: var(--sh1); transition: background .3s, border-color .3s;
+        }
+        .stat-label {
+            font-size: 10px; color: var(--t2); letter-spacing: 1.2px;
+            text-transform: uppercase; font-weight: 600;
+        }
+        .stat-val { font-size: 22px; font-weight: 800; margin-top: 6px; color: var(--t1); }
+
+        /* Tables */
+        .tbl-wrap {
+            background: var(--srf); border-radius: var(--rl);
+            overflow: hidden; border: 1px solid var(--bdr);
+            margin-bottom: 24px; box-shadow: var(--sh1);
+            transition: background .3s, border-color .3s;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            background: var(--evl); padding: 11px 14px;
+            text-align: left; color: var(--t2);
+            font-size: 10px; text-transform: uppercase;
+            letter-spacing: 1px; font-weight: 600;
+        }
+        td {
+            padding: 11px 14px; border-bottom: 1px solid var(--bdr2);
+            font-size: 13px; color: var(--t1);
+            transition: background .15s;
+        }
+        tr:last-child td { border-bottom: none; }
+        tbody tr:hover td { background: var(--evl); }
+
+        /* Badges */
+        .badge {
+            padding: 3px 8px; border-radius: 4px;
+            font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .5px;
+        }
+        .badge-buy  { background: var(--gbg); color: var(--green); border: 1px solid rgba(52,211,153,.3); }
+        .badge-sell { background: var(--rbg); color: var(--red);   border: 1px solid rgba(248,113,113,.3); }
+
+        /* Action buttons */
+        .btn-action {
+            padding: 5px 12px; border-radius: var(--r);
+            border: none; color: #fff; font-size: 12px;
+            font-weight: 600; margin-right: 4px; transition: var(--tx);
+        }
+        .btn-edit    { background: var(--blue); }
+        .btn-edit:hover { background: var(--blueh); }
+        .btn-exit    { background: var(--red); }
+        .btn-exit:hover { opacity: .85; }
+        .btn-details {
+            background: var(--evl); color: var(--t2);
+            border: 1px solid var(--bdr) !important;
+        }
+        .btn-details:hover { background: var(--card); color: var(--t1); }
+
+        /* Modals */
+        .modal-overlay {
+            display: none; position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+            z-index: 9999; justify-content: center; align-items: center;
+        }
+        .modal {
+            background: var(--srf); padding: 24px; border-radius: var(--rl);
+            width: 90%; max-width: 360px;
+            border: 1px solid var(--bdr); box-shadow: var(--sh3);
+            transition: background .3s;
+        }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; margin-bottom: 5px; color: var(--t2); font-size: 12px; font-weight: 500; }
+        .form-group input {
+            width: 100%; padding: 10px 12px;
+            background: var(--inp); border: 1px solid var(--bdr);
+            color: var(--t1); border-radius: var(--r);
+            box-sizing: border-box; font-size: 14px;
+            transition: border-color .2s;
+        }
+        .form-group input:focus { outline: none; border-color: var(--blue); }
+
+        /* Form select */
+        select {
+            background: var(--inp); color: var(--t1);
+            border: 1px solid var(--bdr); border-radius: var(--r);
+            padding: 8px 10px; font-size: 14px; outline: none;
+            transition: var(--tx);
+        }
+        select:focus { border-color: var(--blue); }
+
+        /* Section heading */
+        .section-title {
+            font-size: 13px; font-weight: 700; color: var(--t1);
+            margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+        }
+
+        /* ================================================================
+           SCROLLBAR
+           ================================================================ */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--bdr); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--t3); }
+
+        /* ================================================================
+           RESPONSIVE
+           ================================================================ */
+        @media (max-width: 768px) {
+            .navbar { height: auto; flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
+            .logo { margin-right: 4px; }
+            .nav-links { width: 100%; order: 3; flex-wrap: wrap; gap: 2px; }
+            .nav-links a { font-size: 12px; padding: 5px 8px; }
+            .container { padding: 12px 10px; }
+            .stats-grid { grid-template-columns: repeat(2,1fr); gap: 10px; }
+            .stat-val { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">📈 PAPERTRADE<span class="logo-pill">PRO</span></div>
+        <div class="nav-links">
+            <a href="/dashboard"  class="{{ 'active' if request.path == '/dashboard'  else '' }}">📊 Dashboard</a>
+            <a href="/trade"      class="{{ 'active' if request.path == '/trade'      else '' }}">📈 Chain</a>
+            <a href="/prediction" class="{{ 'active' if request.path == '/prediction' else '' }}">🤖 Predict</a>
+            <a href="/search"     class="{{ 'active' if request.path == '/search'     else '' }}">🔍 Search</a>
+            <a href="/pcr"        class="{{ 'active' if request.path == '/pcr'        else '' }}">📉 PCR Chart</a>
+            <a href="/logout" class="logout-btn">⏏ Logout</a>
+        </div>
+        <button class="theme-toggle" id="themeToggle" title="Toggle theme" aria-label="Toggle dark/light mode"></button>
+    </nav>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script>
+    // ── Theme System (runs on every page that extends base.html) ──────────
+    (function() {
+        var saved = localStorage.getItem('pt-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', saved);
+        var btn = document.getElementById('themeToggle');
+        if (btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
+    })();
+    document.getElementById('themeToggle').addEventListener('click', function() {
+        var html = document.documentElement;
+        var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', next);
+        this.textContent = next === 'dark' ? '🌙' : '☀️';
+        localStorage.setItem('pt-theme', next);
+    });
+    </script>
+</body>
+</html>

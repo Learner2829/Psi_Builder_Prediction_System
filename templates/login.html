@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In — PaperTrade Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:#07101f; --srf:#0d1a2e; --card:#122036; --evl:#192b44;
+            --inp:#07101f; --bdr:#1e3050; --bdr2:#152640;
+            --t1:#dce9fa; --t2:#7a90b0; --t3:#3d526a;
+            --blue:#4f8ef7; --blueh:#3472e0; --gold:#f5a623; --green:#34d399; --red:#f87171;
+            --bbg:rgba(79,142,247,.1); --rbg:rgba(248,113,113,.12); --gbg:rgba(52,211,153,.12);
+            --sh1:0 2px 8px rgba(0,0,0,.45); --sh2:0 8px 32px rgba(0,0,0,.5); --sh3:0 24px 64px rgba(0,0,0,.6);
+            --r:8px; --rl:14px; --tx:all .2s ease;
+        }
+        [data-theme="light"] {
+            --bg:#eef2f8; --srf:#ffffff; --card:#ffffff; --evl:#f4f7fc;
+            --inp:#eaeff7; --bdr:#d0daea; --bdr2:#e4ecf5;
+            --t1:#0c1626; --t2:#4a5568; --t3:#8fa0b8;
+            --blue:#2563eb; --blueh:#1d4ed8; --gold:#b45309; --green:#059669; --red:#dc2626;
+            --bbg:rgba(37,99,235,.08); --rbg:rgba(220,38,38,.09); --gbg:rgba(5,150,105,.09);
+            --sh1:0 2px 8px rgba(0,0,0,.06); --sh2:0 8px 32px rgba(0,0,0,.09); --sh3:0 24px 64px rgba(0,0,0,.13);
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg); color: var(--t1);
+            font-family: 'Inter', -apple-system, sans-serif;
+            min-height: 100vh; display: flex; flex-direction: column;
+            transition: background .3s, color .3s;
+        }
+        a { text-decoration: none; color: inherit; }
+        button { cursor: pointer; font-family: inherit; }
+
+        /* TOP BAR */
+        .topbar {
+            background: var(--srf); height: 56px; padding: 0 28px;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--bdr); box-shadow: var(--sh1);
+            transition: background .3s;
+        }
+        .brand { font-size: 15px; font-weight: 800; color: var(--blue); display: flex; align-items: center; gap: 7px; }
+        .brand-pill { font-size: 9px; font-weight: 700; background: var(--gold); color: #000; padding: 2px 5px; border-radius: 3px; }
+        .topbar-right { display: flex; gap: 10px; align-items: center; }
+        .back-link { color: var(--t2); font-size: 13px; font-weight: 500; transition: var(--tx); }
+        .back-link:hover { color: var(--t1); }
+        .theme-toggle {
+            width: 32px; height: 32px; border-radius: var(--r);
+            border: 1px solid var(--bdr); background: var(--evl);
+            color: var(--t2); font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            transition: var(--tx);
+        }
+        .theme-toggle:hover { background: var(--card); color: var(--t1); }
+
+        /* AUTH WRAPPER */
+        .auth-wrapper {
+            flex: 1; display: flex; justify-content: center; align-items: center;
+            padding: 30px 16px;
+        }
+
+        /* SLIDING AUTH CARD */
+        .auth-container {
+            background: var(--srf); border-radius: 20px;
+            box-shadow: var(--sh3); border: 1px solid var(--bdr);
+            position: relative; overflow: hidden;
+            width: 860px; max-width: 100%; min-height: 520px;
+            transition: background .3s;
+        }
+
+        .form-container {
+            position: absolute; top: 0; height: 100%;
+            transition: all .6s ease-in-out;
+        }
+        .sign-in-container { left: 0; width: 50%; z-index: 2; }
+        .auth-container.right-panel-active .sign-in-container { transform: translateX(100%); }
+        .sign-up-container { left: 0; width: 50%; opacity: 0; z-index: 1; }
+        .auth-container.right-panel-active .sign-up-container { transform: translateX(100%); opacity: 1; z-index: 5; animation: appear .6s; }
+        @keyframes appear { 0%, 49.99% { opacity: 0; z-index: 1; } 50%, 100% { opacity: 1; z-index: 5; } }
+
+        .overlay-container {
+            position: absolute; top: 0; left: 50%;
+            width: 50%; height: 100%; overflow: hidden;
+            transition: transform .6s ease-in-out; z-index: 100;
+        }
+        .auth-container.right-panel-active .overlay-container { transform: translateX(-100%); }
+
+        .overlay {
+            background: linear-gradient(135deg, var(--blue) 0%, #6366f1 100%);
+            position: relative; left: -100%; height: 100%; width: 200%;
+            transform: translateX(0); transition: transform .6s ease-in-out;
+        }
+        .auth-container.right-panel-active .overlay { transform: translateX(50%); }
+
+        .overlay-panel {
+            position: absolute; display: flex; align-items: center;
+            justify-content: center; flex-direction: column;
+            padding: 0 40px; text-align: center;
+            top: 0; height: 100%; width: 50%;
+            color: #fff; transform: translateX(0); transition: transform .6s ease-in-out;
+        }
+        .overlay-left  { transform: translateX(-20%); }
+        .overlay-right { right: 0; transform: translateX(0); }
+        .auth-container.right-panel-active .overlay-left  { transform: translateX(0); }
+        .auth-container.right-panel-active .overlay-right { transform: translateX(20%); }
+        .overlay-panel h1 { font-size: 28px; font-weight: 800; margin-bottom: 12px; }
+        .overlay-panel p  { font-size: 14px; line-height: 1.7; margin-bottom: 28px; opacity: .9; }
+        .ghost-btn {
+            background: transparent; border: 2px solid rgba(255,255,255,.8);
+            color: #fff; font-weight: 700; font-size: 13px;
+            padding: 10px 32px; border-radius: 25px;
+            letter-spacing: .5px; text-transform: uppercase;
+            transition: var(--tx);
+        }
+        .ghost-btn:hover { background: rgba(255,255,255,.15); }
+
+        /* FORMS */
+        form {
+            background: var(--srf); display: flex; align-items: center;
+            justify-content: center; flex-direction: column;
+            padding: 0 44px; height: 100%; text-align: center;
+            transition: background .3s;
+        }
+        form h1 { font-size: 22px; font-weight: 800; margin-bottom: 20px; color: var(--t1); }
+
+        .input-group { width: 100%; margin-bottom: 12px; }
+        .input-group input {
+            width: 100%; background: var(--inp);
+            border: 1px solid var(--bdr); color: var(--t1);
+            padding: 11px 14px; border-radius: var(--r);
+            font-size: 14px; outline: none;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        .input-group input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--bbg); }
+        .input-group input::placeholder { color: var(--t3); }
+
+        .row { display: flex; gap: 10px; width: 100%; }
+
+        .submit-btn {
+            background: var(--blue); color: #fff;
+            border: none; border-radius: 25px;
+            font-size: 13px; font-weight: 700;
+            padding: 12px 40px; letter-spacing: .5px; text-transform: uppercase;
+            transition: var(--tx); margin-top: 12px; width: 100%;
+        }
+        .submit-btn:hover { background: var(--blueh); }
+
+        .forgot-link { color: var(--t2); font-size: 13px; font-weight: 500; margin: 12px 0; transition: var(--tx); }
+        .forgot-link:hover { color: var(--blue); }
+
+        .msg { width: 100%; padding: 10px 12px; border-radius: var(--r); margin-bottom: 14px; font-size: 13px; font-weight: 600; text-align: left; }
+        .msg.error   { background: var(--rbg); color: var(--red);   border: 1px solid var(--red); }
+        .msg.success { background: var(--gbg); color: var(--green); border: 1px solid var(--green); }
+
+        .mobile-toggle { display: none; margin-top: 18px; font-size: 13px; color: var(--blue); font-weight: 600; cursor: pointer; text-decoration: underline; }
+
+        /* OTP MODAL */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,.7); backdrop-filter: blur(6px);
+            display: flex; justify-content: center; align-items: center; z-index: 2000;
+        }
+        .modal-box {
+            position: relative; background: var(--srf); padding: 40px 36px;
+            border-radius: 20px; width: 90%; max-width: 400px;
+            border: 1px solid var(--bdr); box-shadow: var(--sh3);
+            text-align: center; animation: popIn .35s cubic-bezier(.175,.885,.32,1.275);
+            transition: background .3s;
+        }
+        @keyframes popIn { from { transform: scale(.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-box h2 { font-size: 20px; font-weight: 800; color: var(--t1); margin-bottom: 8px; }
+        .modal-box p  { color: var(--t2); font-size: 14px; margin-bottom: 24px; }
+        .otp-input {
+            width: 100%; letter-spacing: 10px; text-align: center;
+            font-size: 26px; font-weight: 700; padding: 14px;
+            border: 2px solid var(--bdr); border-radius: var(--r);
+            margin-bottom: 16px; outline: none;
+            background: var(--inp); color: var(--t1); transition: border-color .2s;
+        }
+        .otp-input:focus { border-color: var(--blue); }
+        .verify-btn {
+            width: 100%; padding: 13px; background: var(--blue); color: #fff;
+            border: none; border-radius: var(--r); font-size: 15px; font-weight: 700;
+            transition: var(--tx);
+        }
+        .verify-btn:hover { background: var(--blueh); }
+        .resend-btn {
+            background: none; border: none; color: var(--t2); font-weight: 600;
+            cursor: pointer; margin-top: 16px; text-decoration: underline;
+            font-size: 13px; text-transform: none; letter-spacing: 0; transition: var(--tx);
+        }
+        .resend-btn:hover { color: var(--blue); }
+        .close-btn {
+            position: absolute; top: 14px; right: 18px;
+            font-size: 24px; color: var(--t3); transition: var(--tx); line-height: 1;
+        }
+        .close-btn:hover { color: var(--red); }
+
+        @media (max-width: 768px) {
+            .auth-container { min-height: 600px; }
+            .overlay-container { display: none; }
+            .sign-in-container, .sign-up-container { width: 100%; }
+            .sign-up-container { opacity: 0; transform: translateX(0); }
+            .auth-container.right-panel-active .sign-in-container { opacity: 0; z-index: 1; transform: translateX(0); }
+            .auth-container.right-panel-active .sign-up-container { opacity: 1; z-index: 5; transform: translateX(0); }
+            .mobile-toggle { display: block; }
+            form { padding: 0 26px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="topbar">
+        <a href="{{ url_for('index') }}" class="brand">📈 PAPERTRADE<span class="brand-pill">PRO</span></a>
+        <div class="topbar-right">
+            <button class="theme-toggle" id="themeToggle" title="Toggle theme"></button>
+            <a href="{{ url_for('index') }}" class="back-link">← Back to Home</a>
+        </div>
+    </nav>
+
+    <div class="auth-wrapper">
+        <div class="auth-container {% if show_signup %}right-panel-active{% endif %}" id="auth-container">
+
+            <!-- SIGN UP FORM -->
+            <div class="form-container sign-up-container">
+                <form action="{{ url_for('login') }}" method="post">
+                    <h1>Create Account</h1>
+                    <div style="height:8px;"></div>
+                    {% if error and show_signup and not show_otp_modal %}
+                        <div class='msg error'>{{ error }}</div>
+                    {% endif %}
+                    <div class="row">
+                        <div class="input-group"><input type="text" name="first_name" placeholder="First Name" required></div>
+                        <div class="input-group"><input type="text" name="last_name" placeholder="Last Name" required></div>
+                    </div>
+                    <div class="row">
+                        <div class="input-group" style="flex:.4"><input type="number" name="age" placeholder="Age" required></div>
+                        <div class="input-group" style="flex:.6"><input type="text" name="username" placeholder="Username" required></div>
+                    </div>
+                    <div class="input-group"><input type="email" name="email" placeholder="Email Address" required></div>
+                    <div class="input-group"><input type="password" name="password" placeholder="Password" required></div>
+                    <button type="submit" name="signup" class="submit-btn">Create Account</button>
+                    <span class="mobile-toggle" onclick="document.getElementById('auth-container').classList.remove('right-panel-active')">Already have an account? Sign In</span>
+                </form>
+            </div>
+
+            <!-- SIGN IN FORM -->
+            <div class="form-container sign-in-container">
+                <form action="{{ url_for('login') }}" method="post">
+                    <h1>Welcome Back</h1>
+                    <div style="height:16px;"></div>
+                    {% if success and not show_signup %}
+                        <div class='msg success'>{{ success }}</div>
+                    {% endif %}
+                    {% if error and not show_signup %}
+                        <div class='msg error'>{{ error }}</div>
+                    {% endif %}
+                    <div class="input-group"><input type="text" name="username" placeholder="Username" required></div>
+                    <div class="input-group"><input type="password" name="password" placeholder="Password" required></div>
+                    <a href="#" class="forgot-link">Forgot your password?</a>
+                    <button type="submit" name="login" class="submit-btn">Sign In</button>
+                    <span class="mobile-toggle" onclick="document.getElementById('auth-container').classList.add('right-panel-active')">Don't have an account? Sign Up</span>
+                </form>
+            </div>
+
+            <!-- OVERLAY -->
+            <div class="overlay-container">
+                <div class="overlay">
+                    <div class="overlay-panel overlay-left">
+                        <h1>Welcome Back!</h1>
+                        <p>Already have an account? Sign in to continue your paper trading journey.</p>
+                        <button class="ghost-btn" id="signIn">Sign In</button>
+                    </div>
+                    <div class="overlay-panel overlay-right">
+                        <h1>Hello, Trader!</h1>
+                        <p>Join thousands of traders testing strategies with real market data — for free.</p>
+                        <button class="ghost-btn" id="signUp">Sign Up</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if show_otp_modal %}
+    <div class="modal-overlay">
+        <div class="modal-box">
+            <a href="{{ url_for('login', abort_signup=1) }}" class="close-btn" title="Cancel">×</a>
+            <h2>Verify Email</h2>
+            <p>We've sent a 6-digit code to <strong>{{ session.get('signup_data', {}).get('email', '') }}</strong></p>
+            {% if error %}
+                <div class='msg error' style='margin-bottom:12px; text-align:left;'>{{ error }}</div>
+            {% endif %}
+            <form method="post" action="{{ url_for('login') }}" style="padding:0;">
+                <input type="text" name="otp_code" class="otp-input" placeholder="000000" maxlength="6" required autocomplete="off">
+                <button type="submit" name="verify_otp" class="verify-btn">Verify & Activate</button>
+            </form>
+            <form method="post" action="{{ url_for('login') }}" style="padding:0;">
+                <button type="submit" name="resend_otp" class="resend-btn">Didn't receive the code? Resend</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <script>
+    // Theme
+    (function() {
+        var saved = localStorage.getItem('pt-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', saved);
+        var btn = document.getElementById('themeToggle');
+        if (btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
+    })();
+    document.getElementById('themeToggle').addEventListener('click', function() {
+        var html = document.documentElement;
+        var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', next);
+        this.textContent = next === 'dark' ? '🌙' : '☀️';
+        localStorage.setItem('pt-theme', next);
+    });
+
+    // Panel toggle
+    var signUpBtn = document.getElementById('signUp');
+    var signInBtn = document.getElementById('signIn');
+    var container = document.getElementById('auth-container');
+    if (signUpBtn && signInBtn) {
+        signUpBtn.addEventListener('click', function() { container.classList.add('right-panel-active'); });
+        signInBtn.addEventListener('click', function() { container.classList.remove('right-panel-active'); });
+    }
+    </script>
+</body>
+</html>

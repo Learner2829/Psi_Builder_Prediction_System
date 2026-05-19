@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    /* --- TOOLBAR --- */
+    .toolbar { 
+        display: flex; gap: 10px; margin-bottom: 15px; background: #1e293b; 
+        padding: 12px; border-radius: 8px; border: 1px solid #334155; 
+        align-items: center; flex-wrap: wrap; justify-content: space-between;
+    }
+    
+    .idx-group { display: flex; gap: 5px; flex-wrap: wrap; }
+    
+    .idx-btn { 
+        padding: 8px 12px; background: #334155; border: 1px solid #475569; 
+        color: #cbd5e1; cursor: pointer; border-radius: 6px; font-weight: 600; 
+        font-size: 13px; min-width: 80px; text-align: center;
+    }
+    .idx-btn.active { background: #2563eb; color: white; border-color: #2563eb; }
+    
+    select { 
+        background: #0f172a; color: white; padding: 8px; 
+        border: 1px solid #334155; border-radius: 6px; min-width: 120px; 
+        font-size: 14px; outline: none;
+    }
+
+    .market-stats { 
+        display: flex; gap: 20px; margin-left: auto; align-items: center; 
+    }
+    .stat-item { font-size: 14px; font-weight: bold; color: #94a3b8; }
+    .stat-val { color: #facc15; font-size: 16px; margin-left: 5px; }
+    .vix-val { color: #f87171; font-size: 16px; margin-left: 5px; }
+
+    /* --- CHAIN TABLE CONTAINER --- */
+    .chain-wrapper {
+        border: 1px solid #334155; border-radius: 8px; background: #1e293b;
+        overflow: hidden; width: 100%; position: relative;
+    }
+
+    .chain-scroll {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* --- GRID LAYOUT FIX --- */
+    .grid-row {
+        display: grid;
+        grid-template-columns: 35px 45px 0.8fr 0.8fr 0.8fr 0.8fr 90px 60px 0.8fr 0.8fr 0.8fr 0.8fr 45px 35px;
+        align-items: center;
+        border-bottom: 1px solid #334155;
+        min-width: 1100px;
+    }
+
+    .header-row { 
+        background: #020617; font-weight: bold; color: #94a3b8; 
+        font-size: 11px; text-transform: uppercase; padding: 12px 0; 
+        position: sticky; top: 0; z-index: 10;
+        border-bottom: 2px solid #334155;
+    }
+    
+    .data-row { font-size: 12px; padding: 6px 0; color: #cbd5e1; }
+    .data-row:hover { background: #334155; }
+    
+    .col { 
+        text-align: center; padding: 0 4px; 
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+    }
+    
+    /* COLORS */
+    .strike { background: #0f172a; color: #facc15; font-weight: bold; padding: 6px 4px; border-radius: 4px; border: 1px solid #334155; }
+    .atm { background: rgba(250, 204, 21, 0.08); border-left: 2px solid #facc15; border-right: 2px solid #facc15; }
+    .pcr-val { font-weight: bold; }
+    .ltp-text { font-weight: bold; color: #fff; }
+    
+    /* BUTTONS */
+    .btn-trade { background: #3b82f6; color: white; border: none; padding: 5px 0; width: 100%; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-trade:hover { background: #2563eb; }
+    
+    .btn-greek { background: #7c3aed; color: white; border: none; padding: 5px 0; width: 100%; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-greek:hover { background: #6d28d9; }
+
+    /* --- MODALS --- */
+    .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:200; justify-content:center; align-items:center; }
+    .modal { background: #1e293b; padding: 20px; border-radius: 12px; width: 90%; max-width: 360px; border: 1px solid #475569; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+    
+    .trade-type-switch { display: flex; margin-bottom: 20px; border-radius: 6px; overflow: hidden; border: 1px solid #334155; }
+    .type-btn { flex: 1; padding: 12px; border: none; font-weight: bold; background: #0f172a; color: #94a3b8; cursor: pointer; }
+    .type-btn.active-buy { background: #22c55e; color: black; }
+    .type-btn.active-sell { background: #ef4444; color: white; }
+    
+    .form-group label { display: block; margin-bottom: 6px; color: #94a3b8; font-size: 12px; }
+    .form-group input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+    
+    .greek-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    .greek-box { background: #0f172a; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #334155; }
+    .greek-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+    .greek-val { font-size: 16px; font-weight: bold; color: white; margin-top: 4px; }
+    .greek-iv { grid-column: span 2; border-color: #38bdf8; background: rgba(56, 189, 248, 0.05); }
+
+    @media (max-width: 600px) {
+        .market-stats { width: 100%; justify-content: space-between; margin-top: 10px; border-top: 1px solid #334155; padding-top: 10px; margin-left: 0; }
+        .idx-group { width: 100%; margin-bottom: 10px; }
+        .idx-btn { flex: 1; }
+        select { width: 100%; }
+    }
+</style>
+
+<div class="toolbar">
+    <div class="idx-group">
+        <button class="idx-btn active" onclick="setIndex('NIFTY')">NIFTY</button>
+        <button class="idx-btn" onclick="setIndex('BANKNIFTY')">BANK</button>
+        <button class="idx-btn" onclick="setIndex('FINNIFTY')">FIN</button>
+        <button class="idx-btn" onclick="setIndex('MIDCPNIFTY')">MIDCP</button>
+        <button class="idx-btn" onclick="setIndex('SENSEX')">SENSEX</button>
+    </div>
+        
+    <select id="expirySelect" onchange="reloadChain(lastSpot)"></select>
+    
+    <div class="market-stats">
+        <div class="stat-item">VIX: <span id="vix" class="vix-val">...</span></div>
+        <div class="stat-item">SPOT: <span id="spot" class="stat-val">...</span></div>
+    </div>
+</div>
+
+<div class="chain-wrapper">
+    <div class="chain-scroll">
+        <div class="grid-row header-row">
+            <div class="col" title="Greeks">G</div>
+            <div class="col">Trade</div>
+            <div class="col">Vol</div>
+            <div class="col" style="color:#a78bfa">OI</div>
+            <div class="col">ATP</div>
+            <div class="col">LTP</div>
+            <div class="col" style="color:#facc15">Strike</div>
+            <div class="col">PCR</div>
+            <div class="col">LTP</div>
+            <div class="col">ATP</div>
+            <div class="col" style="color:#a78bfa">OI</div>
+            <div class="col">Vol</div>
+            <div class="col">Trade</div>
+            <div class="col" title="Greeks">G</div>
+        </div>
+        <div id="chainRows"></div>
+    </div>
+</div>
+
+<div id="tradeModal" class="modal-overlay">
+    <div class="modal">
+        <h3 style="margin-top:0; text-align:center; font-size: 18px;">Place Order</h3>
+        <p id="modalSymbol" style="text-align:center; color:#38bdf8; font-weight:bold; margin-bottom:15px; font-size:14px;"></p>
+        
+        <div class="trade-type-switch">
+            <button id="btnBuy" class="type-btn active-buy" onclick="setTradeType('BUY')">BUY</button>
+            <button id="btnSell" class="type-btn" onclick="setTradeType('SELL')">SELL</button>
+        </div>
+        
+        <p style="font-size:13px; color:#94a3b8; text-align:center; margin-bottom:15px;">LTP: <span id="modalLtp" style="color:white; font-weight:bold;">0.00</span></p>
+        <input type="hidden" id="modalToken">
+        <input type="hidden" id="tradeType" value="BUY">
+        
+        <div class="form-group"><label>Quantity</label><input type="number" id="modalQty" oninput="calcMargin()"></div>
+        <div style="display:flex; gap:10px;">
+            <div class="form-group" style="flex:1"><label>SL</label><input type="number" id="modalSL" placeholder="Opt"></div>
+            <div class="form-group" style="flex:1"><label>Target</label><input type="number" id="modalTarget" placeholder="Opt"></div>
+        </div>
+        
+        <div style="text-align:right; font-size:12px; color:#94a3b8; margin-bottom:15px;">
+            Margin: <span id="marginReq" style="color:#facc15; font-weight:bold;">₹0</span>
+        </div>
+        
+        <div style="display:flex; gap:10px;">
+            <button style="flex:1; background:#475569; color:white; padding:12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="closeModal()">Cancel</button>
+            <button id="btnConfirm" style="flex:1; background:#22c55e; color:black; font-weight:bold; padding:12px; border:none; border-radius:6px; cursor:pointer;" onclick="confirmOrder()">CONFIRM</button>
+        </div>
+        <p style="text-align:center; font-size:10px; color:#64748b; margin-top:10px;">*Brokerage & Taxes apply on execution</p>
+    </div>
+</div>
+
+<div id="greeksModal" class="modal-overlay">
+    <div class="modal">
+        <h3 style="margin-top:0; text-align:center; color:#a78bfa; font-size:18px;">Option Greeks</h3>
+        <p id="greekSymbol" style="text-align:center; color:white; font-size:13px; margin-bottom:15px; border-bottom:1px solid #334155; padding-bottom:10px;">...</p>
+        
+        <div class="greek-grid">
+            <div class="greek-box"><div class="greek-label">Delta (Δ)</div><div class="greek-val" id="g-delta">-</div></div>
+            <div class="greek-box"><div class="greek-label">Theta (Θ)</div><div class="greek-val" id="g-theta">-</div></div>
+            <div class="greek-box"><div class="greek-label">Gamma (Γ)</div><div class="greek-val" id="g-gamma">-</div></div>
+            <div class="greek-box"><div class="greek-label">Vega (v)</div><div class="greek-val" id="g-vega">-</div></div>
+            <div class="greek-box greek-iv"><div class="greek-label">IV</div><div class="greek-val" id="g-iv">-</div></div>
+        </div>
+        
+        <div style="margin-top:20px; text-align:center">
+            <button style="background:#475569; color:white; padding:10px 30px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="closeGreeks()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // MATCH THESE TOKENS WITH APP.PY
+    const INDEX_MAP = {
+        "NIFTY":      { token: "99926000", lot: 65 },
+        "BANKNIFTY":  { token: "99926009", lot: 30 },
+        "FINNIFTY":   { token: "99926037", lot: 40 },
+        "MIDCPNIFTY": { token: "99926074", lot: 75 },
+        "SENSEX":     { token: "99919000", lot: 10 }
+    };
+    const VIX_TOKEN = "99926017"; 
+    
+    let currentIndex = "NIFTY";
+    let activeTokens = [];
+    let streamInterval = null;
+    let currentATM = 0, lastSpot = 0;
+    let strikeTokens = {};
+
+    window.onload = () => { setIndex('NIFTY'); };
+
+    async function setIndex(idx) {
+        currentIndex = idx;
+        document.querySelectorAll('.idx-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active'); 
+        
+        document.getElementById('chainRows').innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8">Loading Chain...</div>';
+        
+        const res = await fetch('/api/expiries', {method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({index: currentIndex})});
+        const dates = await res.json();
+        
+        const sel = document.getElementById('expirySelect');
+        sel.innerHTML = "";
+        dates.forEach(d => sel.add(new Option(d, d)));
+        
+        if(dates.length > 0) { sel.value = dates[0]; startFeed(); }
+    }
+
+    async function startFeed() {
+        if(streamInterval) clearInterval(streamInterval);
+        const spotToken = INDEX_MAP[currentIndex].token;
+        await fetch('/api/subscribe', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tokens:[spotToken, VIX_TOKEN]})});
+        streamInterval = setInterval(updateUI, 1000);
+    }
+
+    function formatLakhs(val) {
+        if (!val || val === 0) return '0';
+        if (val >= 100000) return (val / 100000).toFixed(2) + ' L';
+        if (val >= 1000) return (val / 1000).toFixed(1) + ' k';
+        return val;
+    }
+
+    async function updateUI() {
+        const res = await fetch('/api/market_data');
+        const feed = await res.json();
+        const spotToken = INDEX_MAP[currentIndex].token;
+        
+        if(feed[spotToken]) {
+            const spot = feed[spotToken].ltp;
+            lastSpot = spot;
+            document.getElementById('spot').innerText = spot.toFixed(2);
+            
+            let step = 50;
+            if (['SENSEX', 'BANKEX', 'BANKNIFTY'].includes(currentIndex)) step = 100;
+            if (currentIndex === 'MIDCPNIFTY') step = 25;
+            
+            const newATM = Math.round(spot/step)*step;
+            if(currentATM === 0 || newATM !== currentATM) reloadChain(spot);
+        }
+
+        if(feed[VIX_TOKEN]) {
+            document.getElementById('vix').innerText = feed[VIX_TOKEN].ltp.toFixed(2);
+        }
+
+        for(const [t, d] of Object.entries(feed)) {
+            // Update LTP with color
+            const ltpEl = document.getElementById(`ltp-${t}`);
+            if(ltpEl) {
+                ltpEl.innerText = d.ltp.toFixed(2);
+                if(d.pct.includes('+')) ltpEl.style.color = "#4ade80"; 
+                else ltpEl.style.color = "#f87171";
+            }
+            
+            // Update Volume (Show 0 if 0)
+            const volEl = document.getElementById(`vol-${t}`);
+            if(volEl) volEl.innerText = d.vol > 0 ? formatLakhs(d.vol) : "0";
+
+            // Update OI (Show 0 if 0)
+            const oiEl = document.getElementById(`oi-${t}`);
+            if(oiEl) oiEl.innerText = d.oi > 0 ? formatLakhs(d.oi) : "0";
+            
+            // Update ATP
+            const atpEl = document.getElementById(`atp-${t}`);
+            if(atpEl) atpEl.innerText = d.atp > 0 ? d.atp.toFixed(2) : "0.00";
+
+            if(document.getElementById('tradeModal').style.display === 'flex' && document.getElementById('modalToken').value === t) {
+                document.getElementById('modalLtp').innerText = d.ltp.toFixed(2);
+                calcMargin();
+            }
+        }
+
+        for (const [strike, tokens] of Object.entries(strikeTokens)) {
+            const ceData = feed[tokens.CE];
+            const peData = feed[tokens.PE];
+            if (ceData && peData) {
+                const ceOI = ceData.oi || 0;
+                const peOI = peData.oi || 0;
+                let pcr = "-";
+                if (ceOI > 0) pcr = (peOI / ceOI).toFixed(2);
+                const pcrEl = document.getElementById(`pcr-${strike}`);
+                if (pcrEl) {
+                    pcrEl.innerText = pcr;
+                    pcrEl.style.color = pcr > 1 ? "#4ade80" : (pcr < 0.6 ? "#f87171" : "#cbd5e1");
+                }
+            }
+        }
+    }
+
+    async function reloadChain(spot) {
+        const expiry = document.getElementById('expirySelect').value;
+        const res = await fetch('/api/option_chain', {
+            method:'POST', headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify({expiry:expiry, spot:spot, index:currentIndex})
+        });
+        const data = await res.json();
+        currentATM = data.atm;
+        const container = document.getElementById('chainRows');
+        container.innerHTML = '';
+        activeTokens = [INDEX_MAP[currentIndex].token];
+        strikeTokens = {};
+
+        data.chain.forEach(row => {
+            let ceBtn='-', ceVol='-', ceOi='-', ceAtp='-', ceLtp='-', ceGreeks='-';
+            let peBtn='-', peVol='-', peOi='-', peAtp='-', peLtp='-', peGreeks='-';
+
+            if(row.CE) {
+                activeTokens.push(row.CE.token);
+                const gD = row.CE; 
+                ceGreeks = `<button class="btn-greek" onclick="openGreeks('${gD.symbol}', '${gD.delta}', '${gD.theta}', '${gD.gamma}', '${gD.vega}', '${gD.iv}')">G</button>`;
+                ceBtn = `<button class="btn-trade" onclick="openModal('${row.CE.token}', '${row.CE.symbol}')">T</button>`;
+                ceVol = `<span id="vol-${row.CE.token}">...</span>`;
+                ceOi  = `<span id="oi-${row.CE.token}" class="oi-text">...</span>`;
+                ceAtp = `<span id="atp-${row.CE.token}" style="color:#cbd5e1">...</span>`;
+                ceLtp = `<span id="ltp-${row.CE.token}" class="ltp-text">...</span>`;
+            }
+
+            if(row.PE) {
+                activeTokens.push(row.PE.token);
+                const gD = row.PE;
+                peGreeks = `<button class="btn-greek" onclick="openGreeks('${gD.symbol}', '${gD.delta}', '${gD.theta}', '${gD.gamma}', '${gD.vega}', '${gD.iv}')">G</button>`;
+                peBtn = `<button class="btn-trade" onclick="openModal('${row.PE.token}', '${row.PE.symbol}')">T</button>`;
+                peVol = `<span id="vol-${row.PE.token}">...</span>`;
+                peOi  = `<span id="oi-${row.PE.token}" class="oi-text">...</span>`;
+                peAtp = `<span id="atp-${row.PE.token}" style="color:#cbd5e1">...</span>`;
+                peLtp = `<span id="ltp-${row.PE.token}" class="ltp-text">...</span>`;
+            }
+            
+            if (row.CE && row.PE) strikeTokens[row.strike] = { CE: row.CE.token, PE: row.PE.token };
+
+            const div = document.createElement('div');
+            div.className = `grid-row data-row ${row.strike === data.atm ? 'atm' : ''}`;
+            div.innerHTML = `
+                <div class="col">${ceGreeks}</div>
+                <div class="col">${ceBtn}</div>
+                <div class="col">${ceVol}</div>
+                <div class="col">${ceOi}</div>
+                <div class="col">${ceAtp}</div>
+                <div class="col">${ceLtp}</div>
+                <div class="col strike">${row.strike}</div>
+                <div class="col pcr-val" id="pcr-${row.strike}">...</div>
+                <div class="col">${peLtp}</div>
+                <div class="col">${peAtp}</div>
+                <div class="col">${peOi}</div>
+                <div class="col">${peVol}</div>
+                <div class="col">${peBtn}</div>
+                <div class="col">${peGreeks}</div>
+            `;
+            container.appendChild(div);
+        });
+
+        fetch('/api/subscribe', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tokens:activeTokens})});
+    }
+
+    function openModal(token, symbol) {
+        document.getElementById('modalToken').value = token;
+        document.getElementById('modalSymbol').innerText = symbol;
+        document.getElementById('modalLtp').innerText = document.getElementById(`ltp-${token}`)?.innerText || "0.00";
+        document.getElementById('modalQty').value = INDEX_MAP[currentIndex].lot;
+        document.getElementById('modalSL').value = "";
+        document.getElementById('modalTarget').value = "";
+        setTradeType('BUY');
+        document.getElementById('tradeModal').style.display = 'flex';
+        calcMargin();
+    }
+
+    function setTradeType(type) {
+        document.getElementById('tradeType').value = type;
+        const btnConfirm = document.getElementById('btnConfirm');
+        const btnBuy = document.getElementById('btnBuy');
+        const btnSell = document.getElementById('btnSell');
+        if (type === 'BUY') {
+            btnBuy.classList.add('active-buy');
+            btnSell.classList.remove('active-sell');
+            btnConfirm.innerText = 'CONFIRM BUY';
+            btnConfirm.style.background = '#22c55e';
+        } else {
+            btnSell.classList.add('active-sell');
+            btnBuy.classList.remove('active-buy');
+            btnConfirm.innerText = 'CONFIRM SELL';
+            btnConfirm.style.background = '#ef4444';
+        }
+        calcMargin();
+    }
+
+    function calcMargin() {
+        const qty = document.getElementById('modalQty').value;
+        const ltp = parseFloat(document.getElementById('modalLtp').innerText);
+        const type = document.getElementById('tradeType').value;
+        let margin = 0;
+        // BACKEND COMPATIBILITY: Sell Margin is calculated as 2000 * Qty in backend
+        if (type === 'BUY') margin = ltp * qty;
+        else margin = qty * 2000; 
+        document.getElementById('marginReq').innerText = "₹" + margin.toLocaleString('en-IN', {maximumFractionDigits:0});
+    }
+
+    function closeModal() { document.getElementById('tradeModal').style.display = 'none'; }
+
+    async function confirmOrder() {
+        const token = document.getElementById('modalToken').value;
+        const symbol = document.getElementById('modalSymbol').innerText;
+        const qty = document.getElementById('modalQty').value;
+        const sl = document.getElementById('modalSL').value;
+        const target = document.getElementById('modalTarget').value;
+        const type = document.getElementById('tradeType').value;
+        
+        const res = await fetch('/api/orders/place', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({token, symbol, qty, sl, target, type})
+        });
+        const data = await res.json();
+        if(data.status === 'ok') { closeModal(); window.location.href = "/"; }
+        else { alert(data.msg); }
+    }
+
+    function openGreeks(symbol, delta, theta, gamma, vega, iv) {
+        document.getElementById('greekSymbol').innerText = symbol;
+        const safeVal = (val) => (val && val !== 'undefined' && val !== 'null') ? parseFloat(val).toFixed(4) : '-';
+        document.getElementById('g-delta').innerText = safeVal(delta);
+        document.getElementById('g-theta').innerText = safeVal(theta);
+        document.getElementById('g-gamma').innerText = safeVal(gamma);
+        document.getElementById('g-vega').innerText = safeVal(vega);
+        const ivVal = (iv && iv !== 'undefined' && iv !== 'null') ? parseFloat(iv).toFixed(2) + '%' : '-';
+        document.getElementById('g-iv').innerText = ivVal;
+        document.getElementById('greeksModal').style.display = 'flex';
+    }
+
+    function closeGreeks() { document.getElementById('greeksModal').style.display = 'none'; }
+</script>
+{% endblock %}

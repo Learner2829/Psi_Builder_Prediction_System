@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    /* Dashboard uses CSS vars from base.html */
+    .table-container { /* alias for shared tbl-wrap */
+        background: var(--srf); border-radius: var(--rl);
+        overflow: hidden; border: 1px solid var(--bdr);
+        margin-bottom: 24px; box-shadow: var(--sh1);
+        transition: background .3s, border-color .3s;
+    }
+
+    /* Details modal */
+    .details-modal { max-width: 420px; padding: 0; overflow: hidden; }
+    .det-header {
+        padding: 22px 20px; text-align: center;
+        border-bottom: 1px solid var(--bdr); background: var(--evl);
+    }
+    .det-pnl-title { color: var(--t2); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .det-pnl-val   { font-size: 26px; font-weight: 800; }
+
+    .det-body { padding: 20px; }
+    .det-section-title {
+        color: var(--t1); font-weight: 700; font-size: 14px;
+        margin-bottom: 14px; border-bottom: 1px solid var(--bdr); padding-bottom: 8px;
+    }
+    .det-row   { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; }
+    .det-label { color: var(--t2); }
+    .det-val   { color: var(--t1); font-weight: 600; text-align: right; }
+
+    .det-logs { margin-top: 18px; border-left: 2px solid var(--bdr); padding-left: 16px; margin-left: 4px; }
+    .det-log-item { position: relative; margin-bottom: 14px; font-size: 12px; }
+    .det-log-item::before {
+        content: ''; position: absolute; left: -22px; top: 4px;
+        width: 10px; height: 10px; border-radius: 50%;
+        background: var(--blue); border: 2px solid var(--srf);
+    }
+    .det-log-title { color: var(--t1); font-weight: 600; margin-bottom: 2px; }
+    .det-log-desc  { color: var(--t2); }
+
+    .det-close-btn {
+        display: block; width: calc(100% - 40px); margin: 0 20px 20px;
+        padding: 12px; background: var(--evl); color: var(--t1);
+        text-align: center; border-radius: var(--r); border: 1px solid var(--bdr);
+        font-weight: 600; font-size: 14px; transition: var(--tx);
+    }
+    .det-close-btn:hover { background: var(--card); }
+
+    /* Mobile: transform tables to cards */
+    @media (max-width: 768px) {
+        table, thead, tbody, th, td, tr { display: block; }
+        thead { display: none; }
+        .table-container { background: transparent; border: none; box-shadow: none; }
+        tr {
+            background: var(--srf); margin-bottom: 12px;
+            border: 1px solid var(--bdr); border-radius: var(--r);
+            padding: 10px; box-shadow: var(--sh1);
+        }
+        td {
+            padding: 8px 0; border-bottom: 1px solid var(--bdr2);
+            display: flex; justify-content: space-between; align-items: center; text-align: right;
+        }
+        td:last-child { border-bottom: none; padding-top: 12px; justify-content: flex-end; flex-wrap: wrap; gap: 5px; }
+        td::before {
+            content: attr(data-label); float: left;
+            font-weight: 600; text-transform: uppercase;
+            font-size: 10px; color: var(--t2);
+        }
+        .btn-action { padding: 7px 12px; flex: 1; text-align: center; }
+    }
+</style>
+
+<div class="stats-grid">
+    <div class="stat-card"><div class="stat-label">CASH</div><div id="cashBalance" class="stat-val">...</div></div>
+    <div class="stat-card"><div class="stat-label">INVESTED</div><div id="investedAmt" class="stat-val">...</div></div>
+    <div class="stat-card"><div class="stat-label">NET WORTH</div><div id="netWorth" class="stat-val" style="color:#facc15">...</div></div>
+    <div class="stat-card"><div class="stat-label">NET P&L</div><div id="totalPnl" class="stat-val">...</div></div>
+</div>
+
+<h3 class="section-title">⚡ Active Positions</h3>
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Symbol</th>
+                <th>Side</th>
+                <th>Qty</th>
+                <th>Inv</th>
+                <th>Entry</th>
+                <th>LTP</th>
+                <th>SL</th>
+                <th>Target</th>
+                <th>Brokerage</th> 
+                <th>Net P&L</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="openBody">
+            <tr><td colspan="12" style="text-align:center; padding:15px; color:#64748b;">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<h3 class="section-title">📜 Trade History</h3>
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Symbol</th>
+                <th>Side</th>
+                <th>Qty</th>
+                <th>Inv</th>
+                <th>Entry</th>
+                <th>Exit</th>
+                <th>Brokerage</th> 
+                <th>Net P&L</th>
+                <th>Status / Action</th>
+            </tr>
+        </thead>
+        <tbody id="histBody">
+            <tr><td colspan="10" style="text-align:center; padding:15px; color:#64748b;">No History</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div id="modifyModal" class="modal-overlay">
+    <div class="modal">
+        <h3 style="margin-top:0; color:var(--t1);">Modify Order</h3>
+        <p id="modSymbol" style="color:var(--sky); font-size:12px; margin-bottom:15px; font-weight:bold"></p>
+        <input type="hidden" id="modId">
+        
+        <div class="form-group"><label>New Stop Loss</label><input type="number" id="modSL" placeholder="0"></div>
+        <div class="form-group"><label>New Target</label><input type="number" id="modTarget" placeholder="0"></div>
+        
+        <div style="display:flex; justify-content:space-between; margin-top:20px;">
+            <button class="btn-action btn-details" style="padding:10px 20px; width:45%" onclick="closeMod()">Cancel</button>
+            <button class="btn-action" style="background:var(--green); color:#000; padding:10px 20px; width:45%" onclick="confirmModify()">Update</button>
+        </div>
+    </div>
+</div>
+
+<div id="tradeDetailsModal" class="modal-overlay">
+    <div class="modal details-modal">
+        <div class="det-header">
+            <div class="det-pnl-title">Net Profit & Loss</div>
+            <div id="detPnl" class="det-pnl-val green">+₹0.00 (0.00%)</div>
+        </div>
+        
+        <div class="det-body">
+            <div class="det-section-title">Trade Details</div>
+            
+            <div class="det-row"><span class="det-label">Instrument</span><span id="detSymbol" class="det-val">...</span></div>
+            <div class="det-row"><span class="det-label">Status</span><span id="detStatus" class="det-val">...</span></div>
+            <div class="det-row"><span class="det-label">Quantity</span><span id="detQty" class="det-val">...</span></div>
+            <div class="det-row"><span class="det-label">Entry Price</span><span id="detEntry" class="det-val">...</span></div>
+            <div class="det-row"><span class="det-label">Exit Price</span><span id="detExit" class="det-val">...</span></div>
+            <div class="det-row"><span class="det-label">Stoploss</span><span id="detSl" class="det-val">...</span></div>
+            <div class="det-row"><span class="det-label">Target</span><span id="detTarget" class="det-val">...</span></div>
+            <div class="det-row" style="margin-top:15px; border-top:1px dashed var(--bdr); padding-top:10px;">
+                <span class="det-label">Margin Used</span><span id="detMargin" class="det-val">...</span>
+            </div>
+            <div class="det-row"><span class="det-label">Est. Charges</span><span id="detCharges" class="det-val">...</span></div>
+
+            <div class="det-section-title" style="margin-top:25px;">Order Logs</div>
+            <div class="det-logs">
+                <div class="det-log-item">
+                    <div class="det-log-title" id="logEntryTitle">(Buy) Trade Placed</div>
+                    <div class="det-log-desc" id="logEntryDesc">Price: 0.00 | Time: --:--</div>
+                </div>
+                <div class="det-log-item" id="logExitContainer" style="display:none;">
+                    <div class="det-log-title" id="logExitTitle">(Sell) Trade Closed</div>
+                    <div class="det-log-desc" id="logExitDesc">Exited: 0.00</div>
+                </div>
+            </div>
+        </div>
+        
+        <button class="det-close-btn" onclick="closeDetails()">Close Details</button>
+    </div>
+</div>
+
+<script>
+    let subscribedTokens = new Set();
+    // Dictionary to store full trade objects so we can easily look them up for the details modal
+    let tradeDataMap = {}; 
+
+    document.addEventListener('DOMContentLoaded', () => { updateDashboard(); setInterval(updateDashboard, 1000); });
+
+    async function updateDashboard() {
+        try {
+            const res = await fetch('/api/portfolio');
+            if (!res.ok) return;
+            const data = await res.json();
+            const m = data.metrics;
+
+            if (m) {
+                document.getElementById('cashBalance').innerText = "₹" + (m.cash||0).toLocaleString('en-IN');
+                document.getElementById('investedAmt').innerText = "₹" + (m.invested||0).toLocaleString('en-IN');
+                document.getElementById('netWorth').innerText = "₹" + (m.net_worth||0).toLocaleString('en-IN');
+                const pnl = m.pnl || 0;
+                const pnlEl = document.getElementById('totalPnl');
+                pnlEl.innerText = (pnl >= 0 ? "+" : "") + "₹" + pnl.toLocaleString('en-IN');
+                pnlEl.style.color = pnl >= 0 ? "#4ade80" : "#f87171";
+            }
+
+            if(data.tokens?.length > 0) {
+                const newT = data.tokens.filter(t => !subscribedTokens.has(t));
+                if(newT.length > 0) {
+                    fetch('/api/subscribe', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tokens:newT})});
+                    newT.forEach(t => subscribedTokens.add(t));
+                }
+            }
+
+            let openHTML = '', histHTML = '';
+            let hasOpen = false, hasHist = false;
+
+            if (data.positions) {
+                data.positions.forEach(p => {
+                    // Save to map for details modal
+                    tradeDataMap[p.id] = p;
+
+                    const netPnl = p.pnl || 0;
+                    const grossPnl = p.gross_pnl || 0;
+                    const charges = p.charges || 0;
+                    
+                    const isWin = netPnl >= 0;
+                    const color = isWin ? "green" : "red";
+                    const pnlStr = (isWin ? "+" : "") + netPnl.toFixed(2);
+                    const brokerageStr = "₹" + charges.toFixed(2);
+
+                    const timeStr = p.time ? p.time : "--:--";
+                    const entry = parseFloat(p.entry_price || 0);
+                    const qty = parseInt(p.qty || 0);
+                    const investedVal = (entry * qty).toLocaleString('en-IN');
+                    const typeBadge = p.type === 'BUY' ? 'badge-buy' : 'badge-sell';
+
+                    const displaySL = p.sl ? p.sl : '-';
+                    const displayTarget = p.target ? p.target : '-';
+                    const rawSL = p.sl ? p.sl : '';
+                    const rawTarget = p.target ? p.target : '';
+
+                    if(p.status === 'OPEN') {
+                        hasOpen = true;
+                        openHTML += `<tr>
+                            <td data-label="Time">${timeStr}</td>
+                            <td data-label="Symbol" style="font-weight:bold; color:#fff">${p.symbol}</td>
+                            <td data-label="Side"><span class="badge ${typeBadge}">${p.type}</span></td>
+                            <td data-label="Qty">${qty}</td>
+                            <td data-label="Inv" style="color:#cbd5e1">₹${investedVal}</td>
+                            <td data-label="Entry">${entry}</td>
+                            <td data-label="LTP" style="font-weight:bold; color:#fff">${(p.current_price||0).toFixed(2)}</td>
+                            <td data-label="SL">${displaySL}</td>
+                            <td data-label="Target">${displayTarget}</td>
+                            <td data-label="Brokerage" style="color:#ef4444">${brokerageStr}</td>
+                            <td data-label="Net P&L" class="${color}" style="font-weight:bold">${pnlStr}</td>
+                            <td data-label="Action">
+                                <button class="btn-action btn-details" onclick="openDetails('${p.id}')">Details</button>
+                                <button class="btn-action btn-edit" onclick="openMod('${p.id}', '${p.symbol}', '${rawSL}', '${rawTarget}')">Edit</button>
+                                <button class="btn-action btn-exit" onclick="exitTrade('${p.id}')">Exit</button>
+                            </td></tr>`;
+                    } else {
+                        hasHist = true;
+                        histHTML += `<tr style="opacity:0.6">
+                            <td data-label="Time">${timeStr}</td>
+                            <td data-label="Symbol" style="font-weight:bold; color:#cbd5e1">${p.symbol}</td>
+                            <td data-label="Side"><span class="badge ${typeBadge}">${p.type}</span></td>
+                            <td data-label="Qty">${qty}</td>
+                            <td data-label="Inv">₹${investedVal}</td>
+                            <td data-label="Entry">${entry}</td>
+                            <td data-label="Exit">${(p.exit_price||0).toFixed(2)}</td>
+                            <td data-label="Brokerage" style="color:#ef4444">${brokerageStr}</td>
+                            <td data-label="Net P&L" class="${color}" style="font-weight:bold">${pnlStr}</td>
+                            <td data-label="Status / Action">
+                                <span style="margin-right:10px">${p.exit_reason || 'CLOSED'}</span>
+                                <button class="btn-action btn-details" onclick="openDetails('${p.id}')">Details</button>
+                            </td></tr>`;
+                    }
+                });
+            }
+
+            document.getElementById('openBody').innerHTML = hasOpen ? openHTML : '<tr><td colspan="12" style="text-align:center; padding:15px; color:#64748b;">No Active Trades</td></tr>';
+            document.getElementById('histBody').innerHTML = hasHist ? histHTML : '<tr><td colspan="10" style="text-align:center; padding:15px; color:#64748b;">No History</td></tr>';
+
+        } catch(e) {}
+    }
+
+    // --- TRADE DETAILS MODAL LOGIC ---
+    function openDetails(tradeId) {
+        const p = tradeDataMap[tradeId];
+        if(!p) return;
+
+        const isWin = (p.pnl || 0) >= 0;
+        const pnlEl = document.getElementById('detPnl');
+        
+        // Calculate Margin and PNL%
+        const entry = parseFloat(p.entry_price || 0);
+        const qty = parseInt(p.qty || 0);
+        let marginUsed = 0;
+        
+        if (p.type === 'BUY') {
+            marginUsed = entry * qty;
+        } else {
+            marginUsed = qty * 2000; // Standard backend sell logic assumption
+        }
+        
+        const pnlPct = marginUsed > 0 ? ((p.pnl || 0) / marginUsed) * 100 : 0;
+        
+        // Populate Header
+        pnlEl.innerText = `${isWin ? '+' : ''}₹${(p.pnl||0).toFixed(2)} (${pnlPct.toFixed(2)}%)`;
+        pnlEl.className = `det-pnl-val ${isWin ? 'green' : 'red'}`;
+
+        // Populate Table Details
+        document.getElementById('detSymbol').innerText = p.symbol;
+        document.getElementById('detStatus').innerText = p.status === 'OPEN' ? 'Active' : 'Exited';
+        document.getElementById('detStatus').style.color = p.status === 'OPEN' ? '#38bdf8' : '#cbd5e1';
+        
+        document.getElementById('detQty').innerText = `${p.type === 'BUY' ? '+' : '-'}${qty}`;
+        document.getElementById('detEntry').innerText = entry.toFixed(2);
+        
+        if (p.status === 'OPEN') {
+            document.getElementById('detExit').innerText = (p.current_price || 0).toFixed(2) + ' (LTP)';
+            document.getElementById('detExit').style.color = '#facc15';
+        } else {
+            document.getElementById('detExit').innerText = (p.exit_price || 0).toFixed(2);
+            document.getElementById('detExit').style.color = '#e2e8f0';
+        }
+
+        document.getElementById('detSl').innerText = p.sl ? p.sl : '--';
+        document.getElementById('detTarget').innerText = p.target ? p.target : '--';
+        document.getElementById('detMargin').innerText = marginUsed.toFixed(2);
+        document.getElementById('detCharges').innerText = (p.charges || 0).toFixed(2);
+
+        // Populate Order Logs
+        const oppType = p.type === 'BUY' ? 'Sell' : 'Buy';
+        const timeStr = p.time ? p.time : '--:--';
+        
+        document.getElementById('logEntryTitle').innerText = `(${p.type}) Trade Placed`;
+        document.getElementById('logEntryDesc').innerText = `Price: ${entry.toFixed(2)} | Time: ${timeStr}`;
+
+        const logExitContainer = document.getElementById('logExitContainer');
+        if (p.status === 'CLOSED') {
+            logExitContainer.style.display = 'block';
+            document.getElementById('logExitTitle').innerText = `(${oppType}) Trade Closed`;
+            document.getElementById('logExitDesc').innerText = `Exited: ${(p.exit_price || 0).toFixed(2)}`;
+        } else {
+            logExitContainer.style.display = 'none';
+        }
+
+        document.getElementById('tradeDetailsModal').style.display = 'flex';
+    }
+
+    function closeDetails() {
+        document.getElementById('tradeDetailsModal').style.display = 'none';
+    }
+
+    // --- MODIFY MODAL FUNCTIONS ---
+    function openMod(id, symbol, sl, target) {
+        document.getElementById('modId').value = id;
+        document.getElementById('modSymbol').innerText = symbol;
+        document.getElementById('modSL').value = sl || "";
+        document.getElementById('modTarget').value = target || "";
+        document.getElementById('modifyModal').style.display = 'flex';
+    }
+
+    function closeMod() { document.getElementById('modifyModal').style.display = 'none'; }
+
+    async function confirmModify() {
+        const id = document.getElementById('modId').value;
+        const sl = document.getElementById('modSL').value;
+        const target = document.getElementById('modTarget').value;
+        
+        await fetch('/api/orders/modify', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id: id, sl: sl, target: target})
+        });
+        closeMod();
+        updateDashboard(); 
+    }
+
+    async function exitTrade(id) {
+        if(confirm("Square Off Position?")) {
+            await fetch('/api/orders/exit', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id: id})});
+            updateDashboard(); 
+        }
+    }
+</script>
+{% endblock %}

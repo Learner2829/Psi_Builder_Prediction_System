@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+/* ── PAGE ── */
+.pcr-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:20px; }
+.pcr-header h2 { font-size:17px; font-weight:800; color:var(--t1); display:flex; align-items:center; gap:8px; }
+.pcr-header h2 small { font-size:12px; color:var(--t2); font-weight:500; }
+
+/* ── INDEX CHIPS ── */
+.chip-row { display:flex; gap:6px; flex-wrap:wrap; }
+.chip { padding:6px 16px; border-radius:20px; font-size:12px; font-weight:700; border:1.5px solid var(--bdr); background:var(--srf); color:var(--t2); cursor:pointer; transition:var(--tx); }
+.chip:hover { border-color:var(--blue); color:var(--blue); }
+.chip.active { background:var(--blue); color:#fff; border-color:var(--blue); }
+
+/* ── STAT CARDS ── */
+.pcr-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin:20px 0; }
+.pcr-stat { background:var(--srf); border:1px solid var(--bdr); border-radius:var(--rl); padding:18px 20px; text-align:center; box-shadow:var(--sh1); position:relative; overflow:hidden; }
+.pcr-stat::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+.pcr-stat.pcr-card::before  { background:var(--blue); }
+.pcr-stat.ce-card::before   { background:var(--red); }
+.pcr-stat.pe-card::before   { background:var(--green); }
+.pcr-stat.bias-card::before { background:var(--purple); }
+.pcr-stat .s-lbl { font-size:10px; color:var(--t2); text-transform:uppercase; letter-spacing:1px; font-weight:600; }
+.pcr-stat .s-val { font-size:26px; font-weight:900; margin-top:6px; }
+.pcr-stat .s-sub { font-size:11px; color:var(--t2); margin-top:3px; }
+
+/* BIAS BADGE */
+.bias-bull  { color:var(--green); }
+.bias-bear  { color:var(--red); }
+.bias-neut  { color:var(--gold); }
+
+/* ── CHART CARD ── */
+.chart-card { background:var(--srf); border:1px solid var(--bdr); border-radius:var(--rl); padding:22px; box-shadow:var(--sh1); margin-bottom:20px; }
+.chart-card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+.chart-card-title { font-size:14px; font-weight:700; color:var(--t1); }
+.chart-sub { font-size:11px; color:var(--t2); }
+.ref-legend { display:flex; gap:14px; flex-wrap:wrap; }
+.ref-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--t2); }
+.ref-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* ── OI BAR CHART ── */
+.oi-chart-card { background:var(--srf); border:1px solid var(--bdr); border-radius:var(--rl); padding:22px; box-shadow:var(--sh1); }
+.oi-bars { display:flex; gap:8px; align-items:flex-end; height:160px; margin-top:16px; }
+.oi-bar-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; min-width:0; }
+.oi-bar { width:100%; border-radius:4px 4px 0 0; transition:height .6s ease; }
+.oi-label { font-size:9px; color:var(--t2); text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; }
+
+/* REFRESH BTN */
+.btn-refresh { background:var(--evl); border:1px solid var(--bdr); color:var(--t2); padding:6px 14px; border-radius:var(--r); font-size:12px; font-weight:600; cursor:pointer; transition:var(--tx); }
+.btn-refresh:hover { background:var(--blue); border-color:var(--blue); color:#fff; }
+
+/* EMPTY STATE */
+.empty-state { text-align:center; padding:60px 20px; color:var(--t2); }
+.empty-state .icon { font-size:48px; margin-bottom:12px; }
+.empty-state h3 { font-size:16px; font-weight:700; color:var(--t1); margin-bottom:8px; }
+.empty-state p { font-size:13px; line-height:1.7; max-width:400px; margin:0 auto; }
+
+/* Timestamp badge */
+.ts-badge { font-size:11px; color:var(--t3); }
+</style>
+
+<!-- HEADER -->
+<div class="pcr-header">
+    <h2>📉 PCR Chart <small>Put-Call Ratio Analysis</small></h2>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <span class="ts-badge" id="lastUpdate">Auto-refreshes every 60s</span>
+        <button class="btn-refresh" onclick="forceSnapshot()">⟳ Snapshot Now</button>
+    </div>
+</div>
+
+<!-- INDEX CHIPS -->
+<div class="chip-row">
+    <button class="chip active" data-idx="NIFTY"      onclick="selectIndex(this)">🔵 NIFTY</button>
+    <button class="chip"        data-idx="BANKNIFTY"  onclick="selectIndex(this)">🟢 BANKNIFTY</button>
+    <button class="chip"        data-idx="FINNIFTY"   onclick="selectIndex(this)">🟣 FINNIFTY</button>
+    <button class="chip"        data-idx="MIDCPNIFTY" onclick="selectIndex(this)">🟡 MIDCPNIFTY</button>
+    <button class="chip"        data-idx="SENSEX"     onclick="selectIndex(this)">🔴 SENSEX</button>
+</div>
+
+<!-- STAT CARDS -->
+<div class="pcr-stats">
+    <div class="pcr-stat pcr-card">
+        <div class="s-lbl">Current PCR</div>
+        <div class="s-val" id="statPcr" style="color:var(--blue)">—</div>
+        <div class="s-sub">Put-Call Ratio</div>
+    </div>
+    <div class="pcr-stat ce-card">
+        <div class="s-lbl">Total CE OI</div>
+        <div class="s-val" id="statCeOi" style="color:var(--red)">—</div>
+        <div class="s-sub">Call open interest</div>
+    </div>
+    <div class="pcr-stat pe-card">
+        <div class="s-lbl">Total PE OI</div>
+        <div class="s-val" id="statPeOi" style="color:var(--green)">—</div>
+        <div class="s-sub">Put open interest</div>
+    </div>
+    <div class="pcr-stat bias-card">
+        <div class="s-lbl">Market Bias</div>
+        <div class="s-val" id="statBias">—</div>
+        <div class="s-sub" id="statBiasSub">—</div>
+    </div>
+</div>
+
+<!-- PCR LINE CHART -->
+<div class="chart-card">
+    <div class="chart-card-head">
+        <div>
+            <div class="chart-card-title">PCR Over Time — <span id="chartIdx">NIFTY</span></div>
+            <div class="chart-sub">Sampled every 60s during market hours (09:15 – 15:30)</div>
+        </div>
+        <div class="ref-legend">
+            <div class="ref-item"><div class="ref-dot" style="background:#f87171"></div>Bearish &gt; 1.3</div>
+            <div class="ref-item"><div class="ref-dot" style="background:#f5a623"></div>Neutral 0.7–1.3</div>
+            <div class="ref-item"><div class="ref-dot" style="background:#34d399"></div>Bullish &lt; 0.7</div>
+        </div>
+    </div>
+    <div id="emptyState" class="empty-state" style="display:none;">
+        <div class="icon">📊</div>
+        <h3>No Data Yet</h3>
+        <p>PCR snapshots are taken every 60 seconds during market hours (9:00 AM – 3:35 PM). Click <strong>Snapshot Now</strong> to capture the first data point.</p>
+    </div>
+    <canvas id="pcrChart" height="90"></canvas>
+</div>
+
+<!-- CE vs PE OI BAR CHART -->
+<div class="oi-chart-card">
+    <div class="chart-card-head">
+        <div>
+            <div class="chart-card-title">CE vs PE OI Trend — <span id="oiChartIdx">NIFTY</span></div>
+            <div class="chart-sub">Blue = Call OI &nbsp;|&nbsp; Green = Put OI — last 20 snapshots</div>
+        </div>
+    </div>
+    <div class="oi-bars" id="oiBars"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let activeIdx = 'NIFTY';
+let pcrChart   = null;
+let refreshTimer = null;
+
+// ── Format large OI numbers ──────────────────────────────────────────────────
+function fmtOi(n) {
+    if (!n) return '—';
+    if (n >= 1e7) return (n/1e7).toFixed(2) + ' Cr';
+    if (n >= 1e5) return (n/1e5).toFixed(2) + ' L';
+    if (n >= 1e3) return (n/1e3).toFixed(1) + 'k';
+    return n;
+}
+
+// ── Market bias logic ────────────────────────────────────────────────────────
+function biasFromPcr(pcr) {
+    if (pcr === 0) return { label:'—', cls:'', sub:'No data' };
+    if (pcr > 1.3)  return { label:'▼ BEARISH', cls:'bias-bear', sub:'High put buying' };
+    if (pcr < 0.7)  return { label:'▲ BULLISH', cls:'bias-bull', sub:'High call buying' };
+    return { label:'◆ NEUTRAL', cls:'bias-neut', sub:'Balanced market' };
+}
+
+// ── Update stat cards ────────────────────────────────────────────────────────
+function updateStats(data) {
+    if (!data.length) {
+        ['statPcr','statCeOi','statPeOi','statBias','statBiasSub'].forEach(id => {
+            document.getElementById(id).textContent = '—';
+        });
+        document.getElementById('statBias').className = 's-val';
+        return;
+    }
+    const last = data[data.length - 1];
+    document.getElementById('statPcr').textContent = last.pcr.toFixed(3);
+    document.getElementById('statCeOi').textContent = fmtOi(last.ce_oi);
+    document.getElementById('statPeOi').textContent = fmtOi(last.pe_oi);
+    const bias = biasFromPcr(last.pcr);
+    const biasEl = document.getElementById('statBias');
+    biasEl.textContent = bias.label;
+    biasEl.className   = 's-val ' + bias.cls;
+    document.getElementById('statBiasSub').textContent = bias.sub;
+    document.getElementById('lastUpdate').textContent = 'Last: ' + last.t;
+}
+
+// ── Build Chart.js line chart ────────────────────────────────────────────────
+function buildChart(data) {
+    const canvas  = document.getElementById('pcrChart');
+    const emptyEl = document.getElementById('emptyState');
+
+    if (!data.length) {
+        canvas.style.display   = 'none';
+        emptyEl.style.display  = 'block';
+        return;
+    }
+    canvas.style.display  = 'block';
+    emptyEl.style.display = 'none';
+
+    const isDark  = document.documentElement.getAttribute('data-theme') !== 'light';
+    const gridCol = isDark ? 'rgba(30,48,80,.8)' : 'rgba(208,218,234,.8)';
+    const txtCol  = isDark ? '#7a90b0' : '#4a5568';
+
+    const labels   = data.map(d => d.t);
+    const pcrs     = data.map(d => d.pcr);
+
+    // Color each point by zone
+    const ptColors = pcrs.map(p => p > 1.3 ? '#f87171' : p < 0.7 ? '#34d399' : '#f5a623');
+
+    if (pcrChart) pcrChart.destroy();
+    pcrChart = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'PCR',
+                    data: pcrs,
+                    borderColor: '#4f8ef7',
+                    backgroundColor: 'rgba(79,142,247,.08)',
+                    borderWidth: 2.5,
+                    tension: 0.35,
+                    fill: true,
+                    pointRadius: pcrs.map((_, i) => i === pcrs.length-1 ? 6 : 3),
+                    pointBackgroundColor: ptColors,
+                    pointBorderColor: ptColors,
+                    pointHoverRadius: 7,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: { mode:'index', intersect:false },
+            plugins: {
+                legend: { display:false },
+                tooltip: {
+                    backgroundColor: isDark ? '#122036' : '#fff',
+                    borderColor: isDark ? '#1e3050' : '#d0daea',
+                    borderWidth: 1,
+                    titleColor: isDark ? '#dce9fa' : '#0c1626',
+                    bodyColor: isDark ? '#7a90b0' : '#4a5568',
+                    callbacks: {
+                        label: ctx => {
+                            const d = data[ctx.dataIndex];
+                            const b = biasFromPcr(d.pcr);
+                            return [`PCR: ${d.pcr.toFixed(3)}  ${b.label}`,
+                                    `CE OI: ${fmtOi(d.ce_oi)}`,
+                                    `PE OI: ${fmtOi(d.pe_oi)}`];
+                        }
+                    }
+                },
+                // Reference lines via annotation — fallback to dataset approach
+            },
+            scales: {
+                x: {
+                    grid: { color: gridCol },
+                    ticks: { color: txtCol, maxTicksLimit: 12, font:{ size:11 } }
+                },
+                y: {
+                    grid: { color: gridCol },
+                    ticks: { color: txtCol, font:{ size:11 } },
+                    min: Math.max(0, Math.min(...pcrs) - 0.15),
+                    max: Math.max(...pcrs) + 0.15,
+                }
+            }
+        }
+    });
+
+    // Draw reference lines manually as dataset bands
+    const refDatasets = [
+        { label:'Bearish (1.3)', data: Array(labels.length).fill(1.3), borderColor:'rgba(248,113,113,.5)', borderDash:[5,4], borderWidth:1.5, pointRadius:0, fill:false, tension:0 },
+        { label:'Bullish (0.7)', data: Array(labels.length).fill(0.7), borderColor:'rgba(52,211,153,.5)',  borderDash:[5,4], borderWidth:1.5, pointRadius:0, fill:false, tension:0 },
+        { label:'Neutral (1.0)', data: Array(labels.length).fill(1.0), borderColor:'rgba(245,166,35,.4)',  borderDash:[3,4], borderWidth:1,   pointRadius:0, fill:false, tension:0 },
+    ];
+    refDatasets.forEach(ds => pcrChart.data.datasets.push(ds));
+    pcrChart.update();
+}
+
+// ── OI mini bar chart ────────────────────────────────────────────────────────
+function buildOiBars(data) {
+    const el = document.getElementById('oiBars');
+    const slice = data.slice(-20); // last 20 points
+    if (!slice.length) { el.innerHTML = '<div style="color:var(--t2);font-size:13px;text-align:center;width:100%;padding:40px 0;">No data yet</div>'; return; }
+    const maxOi = Math.max(...slice.map(d => Math.max(d.ce_oi, d.pe_oi))) || 1;
+    el.innerHTML = slice.map((d, i) => `
+        <div class="oi-bar-wrap">
+            <div class="oi-bar" style="height:${Math.max(4,(d.pe_oi/maxOi)*140)}px;background:var(--green);opacity:.8" title="PE OI: ${fmtOi(d.pe_oi)}"></div>
+            <div class="oi-bar" style="height:${Math.max(4,(d.ce_oi/maxOi)*140)}px;background:var(--red);opacity:.7;margin-top:2px" title="CE OI: ${fmtOi(d.ce_oi)}"></div>
+            <div class="oi-label" style="color:var(--t3)">${d.t}</div>
+        </div>`).join('');
+}
+
+// ── Load data from API ───────────────────────────────────────────────────────
+async function loadPcr() {
+    try {
+        const res  = await fetch(`/api/pcr_history?index=${activeIdx}`);
+        const data = await res.json();
+        if (data.error) return;
+        document.getElementById('chartIdx').textContent  = activeIdx;
+        document.getElementById('oiChartIdx').textContent = activeIdx;
+        updateStats(data);
+        buildChart(data);
+        buildOiBars(data);
+    } catch(e) { console.error('PCR load error', e); }
+}
+
+// ── Force snapshot ───────────────────────────────────────────────────────────
+async function forceSnapshot() {
+    const btn = document.querySelector('.btn-refresh');
+    btn.textContent = '⏳ Capturing…';
+    btn.disabled = true;
+    await fetch('/api/pcr_snapshot', { method:'POST', headers:{'Content-Type':'application/json'} });
+    await loadPcr();
+    btn.textContent = '⟳ Snapshot Now';
+    btn.disabled = false;
+}
+
+// ── Index chip selection ─────────────────────────────────────────────────────
+function selectIndex(el) {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    activeIdx = el.dataset.idx;
+    loadPcr();
+}
+
+// ── Auto-refresh every 60 seconds ────────────────────────────────────────────
+function startAutoRefresh() {
+    clearInterval(refreshTimer);
+    refreshTimer = setInterval(loadPcr, 60000);
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+    // Take an immediate snapshot so page always has at least one data point
+    await fetch('/api/pcr_snapshot', { method:'POST', headers:{'Content-Type':'application/json'} });
+    await loadPcr();
+    startAutoRefresh();
+});
+
+// Re-draw chart when theme changes (picks correct grid/text colors)
+const themeBtn = document.getElementById('themeToggle');
+if (themeBtn) themeBtn.addEventListener('click', () => setTimeout(loadPcr, 350));
+</script>
+{% endblock %}

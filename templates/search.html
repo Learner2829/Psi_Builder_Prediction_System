@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    /* ── SEARCH BAR ── */
+    .search-header { max-width: 700px; margin: 0 auto 20px; }
+    .search-header h2 { font-size: 17px; font-weight: 700; color: var(--t1); margin-bottom: 14px; }
+
+    .search-input-wrap { position: relative; }
+    .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--t3); pointer-events: none; }
+    .search-input {
+        width: 100%; padding: 13px 14px 13px 40px; font-size: 15px;
+        border-radius: var(--rl); border: 1px solid var(--bdr);
+        background: var(--srf); color: var(--t1); outline: none;
+        transition: border-color .2s, box-shadow .2s; box-shadow: var(--sh1);
+    }
+    .search-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--bbg); }
+    .search-input::placeholder { color: var(--t3); }
+
+    /* ── INDEX FILTER CHIPS ── */
+    .chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0; max-width: 700px; margin-left: auto; margin-right: auto; }
+    .chip {
+        padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+        border: 1.5px solid var(--bdr); background: var(--srf); color: var(--t2);
+        cursor: pointer; transition: var(--tx); letter-spacing: .3px;
+        display: flex; align-items: center; gap: 5px;
+    }
+    .chip:hover { border-color: var(--blue); color: var(--blue); }
+    .chip.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .chip.chip-nifty.active    { background: #4f8ef7; border-color: #4f8ef7; }
+    .chip.chip-bank.active     { background: #34d399; border-color: #34d399; color: #000; }
+    .chip.chip-fin.active      { background: #a78bfa; border-color: #a78bfa; }
+    .chip.chip-midcp.active    { background: #f5a623; border-color: #f5a623; color: #000; }
+    .chip.chip-sensex.active   { background: #f87171; border-color: #f87171; }
+    .chip .count { opacity: .75; font-size: 10px; font-weight: 600; }
+
+    /* ── LOADING STATE ── */
+    .loading-row { text-align: center; padding: 30px; color: var(--t2); font-size: 14px; }
+
+    /* ── RESULTS ── */
+    .results-grid {
+        max-width: 700px; margin: 10px auto 0;
+        display: grid; grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .result-card {
+        background: var(--srf); padding: 13px 15px;
+        border-radius: var(--r); border: 1px solid var(--bdr);
+        display: flex; justify-content: space-between; align-items: center;
+        transition: var(--tx); box-shadow: var(--sh1); gap: 12px;
+    }
+    .result-card:hover { border-color: var(--blue); background: var(--evl); }
+
+    .stock-info { flex: 1; min-width: 0; }
+    .stock-symbol { font-size: 14px; font-weight: 700; color: var(--t1); }
+    .stock-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+    .idx-badge {
+        font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 3px;
+        text-transform: uppercase; letter-spacing: .4px;
+    }
+    .idx-badge.NIFTY50    { background: rgba(79,142,247,.15);  color: #4f8ef7; }
+    .idx-badge.BANKNIFTY  { background: rgba(52,211,153,.15);  color: #34d399; }
+    .idx-badge.FINNIFTY   { background: rgba(167,139,250,.15); color: #a78bfa; }
+    .idx-badge.MIDCPNIFTY { background: rgba(245,166,35,.15);  color: #f5a623; }
+    .idx-badge.SENSEX     { background: rgba(248,113,113,.15); color: #f87171; }
+
+    .stock-price-wrap { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .stock-price { font-size: 16px; font-weight: 700; color: var(--gold); min-width: 72px; text-align: right; }
+    .stock-price.up   { color: var(--green); }
+    .stock-price.down { color: var(--red);   }
+
+    .btn-trade {
+        background: var(--blue); color: #fff; border: none;
+        padding: 8px 16px; border-radius: var(--r);
+        font-weight: 700; font-size: 12px; cursor: pointer; transition: var(--tx);
+        white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-trade:hover { background: var(--blueh); }
+
+    /* ── ORDER MODAL ── */
+    .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.75); backdrop-filter:blur(4px); z-index:100; justify-content:center; align-items:center; }
+    .modal { background: var(--srf); padding: 24px; border-radius: var(--rl); width: 90%; max-width: 350px; border: 1px solid var(--bdr); box-shadow: var(--sh3); transition: background .3s; }
+    .modal h3 { margin-top:0; text-align:center; font-size:16px; color:var(--t1); }
+    .modal-symbol { text-align:center; color:var(--sky); font-weight:700; margin-bottom:15px; font-size:14px; }
+
+    .trade-type-switch { display: flex; margin-bottom: 18px; border-radius: var(--r); overflow: hidden; border: 1px solid var(--bdr); }
+    .type-btn { flex: 1; padding: 10px; border: none; font-weight: 700; cursor: pointer; background: var(--evl); color: var(--t2); transition: var(--tx); }
+    .type-btn.active-buy  { background: var(--green); color: #000; }
+    .type-btn.active-sell { background: var(--red);   color: #fff; }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; margin-bottom: 5px; color: var(--t2); font-size: 12px; font-weight: 500; }
+    .form-group input {
+        width: 100%; padding: 10px 12px; background: var(--inp);
+        border: 1px solid var(--bdr); color: var(--t1); border-radius: var(--r);
+        box-sizing: border-box; font-size: 14px; transition: border-color .2s;
+    }
+    .form-group input:focus { outline: none; border-color: var(--blue); }
+
+    .margin-display { text-align:right; font-size:12px; color:var(--t2); margin-bottom:14px; }
+    .margin-val { color: var(--gold); font-weight: 700; }
+
+    .modal-actions { display:flex; gap:10px; }
+    .btn-cancel { flex:1; padding:11px; background:var(--evl); color:var(--t1); border:1px solid var(--bdr); border-radius:var(--r); font-weight:700; cursor:pointer; transition:var(--tx); }
+    .btn-cancel:hover { background:var(--card); }
+    .btn-confirm { flex:1; padding:11px; border:none; border-radius:var(--r); font-weight:700; cursor:pointer; transition:var(--tx); }
+
+    .modal-note { text-align:center; font-size:10px; color:var(--t3); margin-top:10px; }
+
+    @media (max-width: 600px) { .btn-trade { padding: 7px 10px; } .stock-price { min-width: 56px; font-size: 14px; } }
+</style>
+
+<!-- SEARCH HEADER -->
+<div class="search-header">
+    <h2>📊 Option Chain Stocks</h2>
+    <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" class="search-input"
+               placeholder="Search by symbol (e.g. RELIANCE, HDFC, INFY)…"
+               oninput="handleSearch(this.value)">
+    </div>
+</div>
+
+<!-- INDEX FILTER CHIPS -->
+<div class="chip-row">
+    <button class="chip chip-nifty active" data-index="NIFTY50"    onclick="selectChip(this)">🔵 NIFTY 50   <span class="count">50</span></button>
+    <button class="chip chip-bank"          data-index="BANKNIFTY"  onclick="selectChip(this)">🟢 BANKNIFTY  <span class="count">12</span></button>
+    <button class="chip chip-fin"           data-index="FINNIFTY"   onclick="selectChip(this)">🟣 FINNIFTY   <span class="count">20</span></button>
+    <button class="chip chip-midcp"         data-index="MIDCPNIFTY" onclick="selectChip(this)">🟡 MIDCPNIFTY <span class="count">25</span></button>
+    <button class="chip chip-sensex"        data-index="SENSEX"     onclick="selectChip(this)">🔴 SENSEX     <span class="count">30</span></button>
+</div>
+
+<!-- RESULTS -->
+<div class="results-grid" id="results">
+    <div class="loading-row">Loading NIFTY 50 stocks…</div>
+</div>
+
+<!-- ORDER MODAL -->
+<div id="tradeModal" class="modal-overlay">
+    <div class="modal">
+        <h3>Place Order</h3>
+        <p id="modalSymbol" class="modal-symbol"></p>
+
+        <div class="trade-type-switch">
+            <button id="btnBuy"  class="type-btn active-buy" onclick="setTradeType('BUY')">BUY</button>
+            <button id="btnSell" class="type-btn"            onclick="setTradeType('SELL')">SELL</button>
+        </div>
+
+        <p style="font-size:13px; color:var(--t2); text-align:center; margin-bottom:14px;">
+            LTP: <span id="modalLtp" style="color:var(--t1); font-weight:700;">0.00</span>
+        </p>
+        <input type="hidden" id="modalToken">
+        <input type="hidden" id="tradeType" value="BUY">
+
+        <div class="form-group"><label>Quantity</label><input type="number" id="modalQty" value="1" oninput="calcMargin()"></div>
+        <div class="form-group"><label>Stop Loss (Optional)</label><input type="number" id="modalSL" placeholder="—"></div>
+        <div class="form-group"><label>Target (Optional)</label><input type="number" id="modalTarget" placeholder="—"></div>
+
+        <div class="margin-display">Required Margin: <span id="marginReq" class="margin-val">₹0</span></div>
+
+        <div class="modal-actions">
+            <button class="btn-cancel"  onclick="closeModal()">Cancel</button>
+            <button class="btn-confirm" id="btnConfirm" onclick="confirmOrder()">CONFIRM</button>
+        </div>
+        <p class="modal-note">* Brokerage & taxes apply on execution</p>
+    </div>
+</div>
+
+<script>
+    let activeIndex  = 'NIFTY50';   // active chip
+    let allStocks    = [];           // full list loaded for active chip
+    let streamTimer  = null;
+    let activeToken  = null;
+    let searchTimer  = null;
+
+    // ── Chip selection ───────────────────────────────────────────────────────
+    function selectChip(el) {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        activeIndex = el.dataset.index;
+        document.getElementById('searchInput').value = '';
+        loadIndexStocks(activeIndex);
+    }
+
+    // ── Load ALL stocks for an index ─────────────────────────────────────────
+    async function loadIndexStocks(index) {
+        document.getElementById('results').innerHTML = `<div class="loading-row">⏳ Loading ${index} stocks…</div>`;
+        try {
+            const res  = await fetch(`/api/index_stocks?index=${index}`);
+            allStocks  = await res.json();
+            if (allStocks.error) { document.getElementById('results').innerHTML = `<div class="loading-row">❌ ${allStocks.error}</div>`; return; }
+            renderCards(allStocks);
+        } catch(e) {
+            document.getElementById('results').innerHTML = '<div class="loading-row">❌ Failed to load stocks.</div>';
+        }
+    }
+
+    // ── Search box (filters locally if index is loaded, or hits API) ─────────
+    function handleSearch(q) {
+        clearTimeout(searchTimer);
+        const trimmed = q.trim();
+        if (!trimmed) { renderCards(allStocks); return; }
+        searchTimer = setTimeout(async () => {
+            // Client-side filter first (instant)
+            const local = allStocks.filter(s => s.symbol.includes(trimmed.toUpperCase()) || s.name.includes(trimmed.toUpperCase()));
+            if (local.length) { renderCards(local); return; }
+            // Fallback: server search across all F&O stocks
+            const res  = await fetch(`/api/search?q=${encodeURIComponent(trimmed)}&index=${activeIndex}`);
+            const data = await res.json();
+            if (!data.length) {
+                document.getElementById('results').innerHTML = '<div class="loading-row">No results found.</div>';
+            } else {
+                renderCards(data);
+            }
+        }, 220);
+    }
+
+    // ── Render stock cards ───────────────────────────────────────────────────
+    function renderCards(stocks) {
+        if (!stocks.length) { document.getElementById('results').innerHTML = '<div class="loading-row">No stocks found.</div>'; return; }
+
+        const html = stocks.map(s => {
+            const badges = (s.indices || []).map(i =>
+                `<span class="idx-badge ${i}">${i === 'NIFTY50' ? 'N50' : i}</span>`
+            ).join('');
+            return `
+            <div class="result-card">
+                <div class="stock-info">
+                    <div class="stock-symbol">${s.name || s.symbol}</div>
+                    <div class="stock-badges">${badges}</div>
+                </div>
+                <div class="stock-price-wrap">
+                    <div class="stock-price" id="price-${s.token}">…</div>
+                    <button class="btn-trade" onclick="openModal('${s.token}','${s.name || s.symbol}')">Trade</button>
+                </div>
+            </div>`;
+        }).join('');
+        document.getElementById('results').innerHTML = html;
+
+        // Subscribe to live feed for visible tokens
+        const tokens = stocks.map(s => s.token).filter(Boolean);
+        if (tokens.length) {
+            fetch('/api/subscribe', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tokens})});
+            if (!streamTimer) streamTimer = setInterval(updatePrices, 1000);
+        }
+    }
+
+    // ── Live price update ────────────────────────────────────────────────────
+    async function updatePrices() {
+        const res  = await fetch('/api/market_data');
+        const feed = await res.json();
+        for (const [t, d] of Object.entries(feed)) {
+            const el = document.getElementById(`price-${t}`);
+            if (el) {
+                el.textContent = '₹' + d.ltp.toFixed(2);
+                el.className = 'stock-price ' + (d.pct.includes('+') ? 'up' : 'down');
+            }
+            // Update modal if open
+            if (document.getElementById('tradeModal').style.display === 'flex' && document.getElementById('modalToken').value === t) {
+                document.getElementById('modalLtp').textContent = d.ltp.toFixed(2);
+                calcMargin();
+            }
+        }
+    }
+
+    // ── Order modal ──────────────────────────────────────────────────────────
+    function openModal(token, symbol) {
+        document.getElementById('modalToken').value  = token;
+        document.getElementById('modalSymbol').textContent = symbol;
+        const priceEl = document.getElementById(`price-${token}`);
+        document.getElementById('modalLtp').textContent = priceEl ? priceEl.textContent.replace('₹','') : '0.00';
+        document.getElementById('modalSL').value = '';
+        document.getElementById('modalTarget').value = '';
+        document.getElementById('modalQty').value = '1';
+        document.getElementById('tradeModal').style.display = 'flex';
+        setTradeType('BUY');
+    }
+
+    function setTradeType(type) {
+        document.getElementById('tradeType').value = type;
+        const btnConfirm = document.getElementById('btnConfirm');
+        const btnBuy     = document.getElementById('btnBuy');
+        const btnSell    = document.getElementById('btnSell');
+        if (type === 'BUY') {
+            btnBuy.classList.add('active-buy');    btnSell.classList.remove('active-sell');
+            btnConfirm.textContent = '✅ BUY STOCK';
+            btnConfirm.style.background = 'var(--green)'; btnConfirm.style.color = '#000';
+        } else {
+            btnSell.classList.add('active-sell'); btnBuy.classList.remove('active-buy');
+            btnConfirm.textContent = '🔴 SELL STOCK';
+            btnConfirm.style.background = 'var(--red)'; btnConfirm.style.color = '#fff';
+        }
+        calcMargin();
+    }
+
+    function calcMargin() {
+        const qty  = parseFloat(document.getElementById('modalQty').value) || 0;
+        const ltp  = parseFloat(document.getElementById('modalLtp').textContent) || 0;
+        const type = document.getElementById('tradeType').value;
+        const margin = type === 'BUY' ? ltp * qty : qty * 2000;
+        document.getElementById('marginReq').textContent = '₹' + margin.toLocaleString('en-IN', {maximumFractionDigits:0});
+    }
+
+    function closeModal() { document.getElementById('tradeModal').style.display = 'none'; }
+
+    async function confirmOrder() {
+        const token  = document.getElementById('modalToken').value;
+        const symbol = document.getElementById('modalSymbol').textContent;
+        const qty    = document.getElementById('modalQty').value;
+        const sl     = document.getElementById('modalSL').value;
+        const target = document.getElementById('modalTarget').value;
+        const type   = document.getElementById('tradeType').value;
+
+        const res  = await fetch('/api/orders/place', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({token, symbol, qty, sl, target, type})
+        });
+        const data = await res.json();
+        if (data.status === 'ok') { closeModal(); window.location.href = '/dashboard'; }
+        else { alert(data.msg); }
+    }
+
+    // ── Init: load NIFTY 50 on page load ─────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', () => loadIndexStocks('NIFTY50'));
+</script>
+{% endblock %}
